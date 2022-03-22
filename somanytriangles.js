@@ -12,6 +12,8 @@ var CANVAS_TARGET = 0;
 var GL_TARGET = 0;
 var CANVAS_BEST = 0;
 var GL_BEST = 0;
+
+var N_TRIANGLES = 50;
 // // 
 
 window.addEventListener('load', function () {
@@ -200,17 +202,16 @@ function renderBestImage() {
   var buffer = GL_BEST.createBuffer();
   GL_BEST.bindBuffer(GL_BEST.ARRAY_BUFFER, buffer);
 
+  var positions = [];
+  for (let i = 0; i < N_TRIANGLES * 3; i++) {
+    positions.push(Math.random() * IMAGE_W);  // random x
+    positions.push(Math.random() * IMAGE_H);  // random y
+  }
+
   // Set Geometry.
   GL_BEST.bufferData(
     GL_BEST.ARRAY_BUFFER,
-    new Float32Array([
-      100, 200,
-      500, 200,
-      100, 300,
-      100, 300,
-      500, 200,
-      500, 300,
-    ]),
+    new Float32Array(positions),
     GL_BEST.STATIC_DRAW);
 
   // tell the position attribute how to pull data out of the current ARRAY_BUFFER
@@ -227,24 +228,24 @@ function renderBestImage() {
   GL_BEST.bindBuffer(GL_BEST.ARRAY_BUFFER, buffer);
   // Set the colors.
 
-  // Pick 2 random colors.
-  var r1 = Math.random();
-  var b1 = Math.random();
-  var g1 = Math.random();
-  var r2 = Math.random();
-  var b2 = Math.random();
-  var g2 = Math.random();
+  var colors = [];
+  for (let i = 0; i < N_TRIANGLES; i++) {
+    var r = Math.random();
+    var g = Math.random();
+    var b = Math.random();
+    var a = Math.random();
+
+    for (let c = 0; c < 3; c++) {
+      colors.push(r);
+      colors.push(g);
+      colors.push(b);
+      colors.push(a);
+    }
+  }
 
   GL_BEST.bufferData(
     GL_BEST.ARRAY_BUFFER,
-    new Float32Array([
-      g2, b1, b2, 1,
-      b1, g2, g1, 1,
-      r1, b1, g1, 1,
-      r2, b2, b1, 1,
-      b2, g2, g2, 1,
-      r2, b2, g2, 1,
-    ]),
+    new Float32Array(colors),
     GL_BEST.STATIC_DRAW);
 
   // tell the color attribute how to pull data out of the current ARRAY_BUFFER
@@ -276,7 +277,7 @@ function renderBestImage() {
   // draw
   var primitiveType = GL_BEST.TRIANGLES;
   var offset = 0;
-  var count = 6;
+  var count = N_TRIANGLES;
   GL_BEST.drawArrays(primitiveType, offset, count);
 }
 
