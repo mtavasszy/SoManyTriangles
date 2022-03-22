@@ -5,16 +5,28 @@
    <meta charset="utf-8">
    <title>WebGL Demo</title>
    <link rel="stylesheet" href="style.css">
-   <script src="https://webgl2fundamentals.org/webgl/resources/webgl-utils.js"></script>
-   <script src="somanytriangles.js" defer></script>
+   <script src="webgl-utils.js"></script>
+   <script src="shadercode.js"></script>
+   <script src="somanytriangles.js"></script>
 </head>
 
 <body>
-   <canvas id="canvas"></canvas>
-   <div id="ui"></div>
+   <h2>Turn your image into triangles!</h2>
+   
+   <div class="images">
+      <div class="image-block">
+         Target<br />
+         <canvas id="canvas_target"></canvas>
+      </div>
+
+      <div class="image-block">
+         Best<br />
+         <canvas id="canvas_best"></canvas>
+      </div>
    </div>
-   <div>
-      <input type='file' />
+
+   <div class="image-upload">
+      <input id="upload_target_image" type='file' />
    </div>
 </body>
 

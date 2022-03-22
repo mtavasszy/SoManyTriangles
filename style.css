@@ -1,9 +1,24 @@
-@import url("https://webgl2fundamentals.org/webgl/resources/webgl-tutorials.css");
+/* @import url("https://webgl2fundamentals.org/webgl/resources/webgl-tutorials.css"); */
 body {
-  margin: 0;
+  margin: 20px;
+  background: #FFF;
 }
+
+.images {
+  display: block;
+}
+
+.image-block {
+  display:inline-block;
+  margin-right: 20px;
+  max-width: 50%;
+}
+
 canvas {
-  width: 50vw;
-  height: 50vh;
+  border: solid 1px #000;
+  max-width: 40vw;
+}
+
+.image-upload {
   display: block;
 }
