@@ -14,9 +14,16 @@ body {
   max-width: 50%;
 }
 
-canvas {
+.image-block canvas {
   border: solid 1px #000;
   max-width: 40vw;
+  height: auto;
+}
+
+.image-block img {
+  border: solid 1px #000;
+  max-width: 40vw;
+  height: auto;
 }
 
 .image-upload {
