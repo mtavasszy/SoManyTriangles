@@ -7,8 +7,8 @@ var IMAGE_H = 0;
 
 // var CANVAS_TARGET = 0;
 // var GL_TARGET = 0;
-var CANVAS_BEST = 0;
-var GL_BEST = 0;
+var CANVAS = 0;
+var GL = 0;
 
 var N_TRIANGLES = 50;
 // // 
@@ -46,9 +46,9 @@ function updateCanvas() {
   targetImg.width = IMAGE_W;
   targetImg.height = IMAGE_H;
 
-  CANVAS_BEST = document.querySelector("#canvas_best");
-  CANVAS_BEST.width = IMAGE_W;
-  CANVAS_BEST.height = IMAGE_H;
+  CANVAS = document.querySelector("#canvas_best");
+  CANVAS.width = IMAGE_W;
+  CANVAS.height = IMAGE_H;
 }
 
 // function renderTargetImage() {
@@ -178,29 +178,37 @@ function updateCanvas() {
 
 function renderBestImage() {
   // Get A WebGL context
-  var CANVAS_BEST = document.querySelector("#canvas_best");
-  var GL_BEST = CANVAS_BEST.getContext("webgl2");
-  if (!GL_BEST) {
+  CANVAS = document.querySelector("#canvas_best");
+  GL = CANVAS.getContext("webgl2", {
+    antialias : false,
+    alpha : false,
+    premultipliedAlpha: false  // Ask for non-premultiplied alpha
+  });
+  if (!GL) {
     return;
   }
 
+  GL.enable(GL.BLEND);
+  GL.blendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
+  GL.disable(GL.DEPTH_TEST);
+
   // Use our boilerplate utils to compile the shaders and link into a program
-  var program = webglUtils.createProgramFromSources(GL_BEST, [triangleVertexShaderSource, triangleFragmentShaderSource]);
+  var program = webglUtils.createProgramFromSources(GL, [triangleVertexShaderSource, triangleFragmentShaderSource]);
 
   // look up where the vertex data needs to go.
-  var positionAttributeLocation = GL_BEST.getAttribLocation(program, "a_position");
-  var colorAttributeLocation = GL_BEST.getAttribLocation(program, "a_color");
+  var positionAttributeLocation = GL.getAttribLocation(program, "a_position");
+  var colorAttributeLocation = GL.getAttribLocation(program, "a_color");
 
   // look up uniform locations
-  var resolutionUniformLocation = GL_BEST.getUniformLocation(program, "u_resolution");
+  var resolutionUniformLocation = GL.getUniformLocation(program, "u_resolution");
 
   // Create set of attributes
-  var vao = GL_BEST.createVertexArray();
-  GL_BEST.bindVertexArray(vao);
+  var vao = GL.createVertexArray();
+  GL.bindVertexArray(vao);
 
   // Create a buffer for the positons.
-  var buffer = GL_BEST.createBuffer();
-  GL_BEST.bindBuffer(GL_BEST.ARRAY_BUFFER, buffer);
+  var buffer = GL.createBuffer();
+  GL.bindBuffer(GL.ARRAY_BUFFER, buffer);
 
   var positions = [];
   for (let i = 0; i < N_TRIANGLES * 3; i++) {
@@ -209,23 +217,23 @@ function renderBestImage() {
   }
 
   // Set Geometry.
-  GL_BEST.bufferData(
-    GL_BEST.ARRAY_BUFFER,
+  GL.bufferData(
+    GL.ARRAY_BUFFER,
     new Float32Array(positions),
-    GL_BEST.STATIC_DRAW);
+    GL.STATIC_DRAW);
 
   // tell the position attribute how to pull data out of the current ARRAY_BUFFER
-  GL_BEST.enableVertexAttribArray(positionAttributeLocation);
+  GL.enableVertexAttribArray(positionAttributeLocation);
   var size = 2;
-  var type = GL_BEST.FLOAT;
+  var type = GL.FLOAT;
   var normalize = false;
   var stride = 0;
   var offset = 0;
-  GL_BEST.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
+  GL.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
 
   // Create a buffer for the colors.
-  var buffer = GL_BEST.createBuffer();
-  GL_BEST.bindBuffer(GL_BEST.ARRAY_BUFFER, buffer);
+  var buffer = GL.createBuffer();
+  GL.bindBuffer(GL.ARRAY_BUFFER, buffer);
   // Set the colors.
 
   var colors = [];
@@ -243,42 +251,42 @@ function renderBestImage() {
     }
   }
 
-  GL_BEST.bufferData(
-    GL_BEST.ARRAY_BUFFER,
+  GL.bufferData(
+    GL.ARRAY_BUFFER,
     new Float32Array(colors),
-    GL_BEST.STATIC_DRAW);
+    GL.STATIC_DRAW);
 
   // tell the color attribute how to pull data out of the current ARRAY_BUFFER
-  GL_BEST.enableVertexAttribArray(colorAttributeLocation);
+  GL.enableVertexAttribArray(colorAttributeLocation);
   var size = 4;
-  var type = GL_BEST.FLOAT;
+  var type = GL.FLOAT;
   var normalize = false;
   var stride = 0;
   var offset = 0;
-  GL_BEST.vertexAttribPointer(colorAttributeLocation, size, type, normalize, stride, offset);
+  GL.vertexAttribPointer(colorAttributeLocation, size, type, normalize, stride, offset);
 
   // Tell WebGL how to convert from clip space to pixels
-  GL_BEST.viewport(0, 0, IMAGE_W, IMAGE_H);
+  GL.viewport(0, 0, IMAGE_W, IMAGE_H);
 
   // Clear the canvas
-  GL_BEST.clearColor(0, 0, 0, 1);
-  GL_BEST.clear(GL_BEST.COLOR_BUFFER_BIT | GL_BEST.DEPTH_BUFFER_BIT);
+  GL.clearColor(0, 0, 0, 0);
+  GL.clear(GL.COLOR_BUFFER_BIT);
 
   // Tell it to use our program (pair of shaders)
-  GL_BEST.useProgram(program);
+  GL.useProgram(program);
 
   // Bind the attribute/buffer set we want.
-  GL_BEST.bindVertexArray(vao);
+  GL.bindVertexArray(vao);
 
   // Pass in the canvas resolution so we can convert from
   // pixels to clipspace in the shader
-  GL_BEST.uniform2f(resolutionUniformLocation, IMAGE_W, IMAGE_H);
+  GL.uniform2f(resolutionUniformLocation, IMAGE_W, IMAGE_H);
 
   // draw
-  var primitiveType = GL_BEST.TRIANGLES;
+  var primitiveType = GL.TRIANGLES;
   var offset = 0;
   var count = N_TRIANGLES;
-  GL_BEST.drawArrays(primitiveType, offset, count);
+  GL.drawArrays(primitiveType, offset, count);
 }
 
 // Returns a random integer from 0 to range - 1.

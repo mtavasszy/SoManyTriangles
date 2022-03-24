@@ -5,6 +5,7 @@
    <meta charset="utf-8">
    <title>WebGL Demo</title>
    <link rel="stylesheet" href="style.css">
+   <script src="https://greggman.github.io/webgl-lint/webgl-lint.js"></script>
    <script src="webgl-utils.js"></script>
    <script src="shadercode.js"></script>
    <script src="somanytriangles.js"></script>
@@ -15,12 +16,12 @@
    
    <div class="images">
       <div class="image-block">
-         Target<br />
+         <span>Target image:</span> <br />
          <img id="target_img" width="200" height="200"></img>
       </div>
 
       <div class="image-block">
-         Best<br />
+         <span>Best attempt so far: </span><br />
          <canvas id="canvas_best" width="200" height="200"></canvas>
       </div>
    </div>
