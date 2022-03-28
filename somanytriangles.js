@@ -86,148 +86,244 @@ function renderBestImage() {
 
   // Attach a texture to it.
   var attachmentPoint = gl.COLOR_ATTACHMENT0;
-  gl.framebufferTexture2D(
-    gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, triangleTexture, mipLevel);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, triangleTexture, mipLevel);
 
 
-  // // Bind the position buffer so gl.bufferData that will be called
-  // // in setRectangle puts data in the position buffer
-  // gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  //// TRIANGLES
 
-  // // Set a rectangle the same size as the image.
-  // setRectangle(gl, 0, 0, image.width, image.height);
-
-
-
-
-
-
-  // setup GLSL program
-  var imgProgram = webglUtils.createProgramFromSources(gl,
-    [imgVertexShaderSource, imgFragmentShaderSource]);
+  // Use our boilerplate utils to compile the shaders and link into a program
+  var triProgram = webglUtils.createProgramFromSources(gl, [triVertexShaderSource, triFragmentShaderSource]);
 
   // look up where the vertex data needs to go.
-  var imgPositionAttributeLocation = gl.getAttribLocation(imgProgram, "a_position");
-  var imgTexCoordAttributeLocation = gl.getAttribLocation(imgProgram, "a_texCoord");
+  var triPositionAttributeLocation = gl.getAttribLocation(triProgram, "a_position");
+  var triColorAttributeLocation = gl.getAttribLocation(triProgram, "a_color");
 
-  // lookup uniforms
-  var imgResolutionLocation = gl.getUniformLocation(imgProgram, "u_resolution");
-  var imgImageLocation = gl.getUniformLocation(imgProgram, "u_image");
+  // look up uniform locations
+  var triResolutionUniformLocation = gl.getUniformLocation(triProgram, "u_resolution");
 
-  // Create a vertex array object (attribute state)
-  var imgVao = gl.createVertexArray();
+  // Create set of attributes
+  var triVao = gl.createVertexArray();
+  gl.bindVertexArray(triVao);
 
-  // and make it the one we're currently working with
-  gl.bindVertexArray(imgVao);
+  // Create a buffer for the positons.
+  var triPositionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, triPositionBuffer);
 
-  // Create a buffer and put a single pixel space rectangle in
-  // it (2 triangles)
-  var imgPositionBuffer = gl.createBuffer();
+  var triPositions = [];
+  for (let i = 0; i < N_TRIANGLES * 3; i++) {
+    triPositions.push(Math.random() * IMAGE_W);  // random x
+    triPositions.push(Math.random() * IMAGE_H);  // random y
+  }
 
-  // Turn on the attribute
-  gl.enableVertexAttribArray(imgPositionAttributeLocation);
+  // Set Geometry.
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array(triPositions),
+    gl.STATIC_DRAW);
 
-  // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
-  gl.bindBuffer(gl.ARRAY_BUFFER, imgPositionBuffer);
+  // tell the position attribute how to pull data out of the current ARRAY_BUFFER
+  gl.enableVertexAttribArray(triPositionAttributeLocation);
+  var size = 2;
+  var type = gl.FLOAT;
+  var normalize = false;
+  var stride = 0;
+  var offset = 0;
+  gl.vertexAttribPointer(triPositionAttributeLocation, size, type, normalize, stride, offset);
 
-  // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
-  var size = 2;          // 2 components per iteration
-  var type = gl.FLOAT;   // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-  var offset = 0;        // start at the beginning of the buffer
-  gl.vertexAttribPointer(
-    imgPositionAttributeLocation, size, type, normalize, stride, offset);
+  // Create a buffer for the colors.
+  var triColorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, triColorBuffer);
+  // Set the colors.
 
-  // provide texture coordinates for the rectangle.
-  var imgTexCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, imgTexCoordBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    0.0, 0.0,
-    1.0, 0.0,
-    0.0, 1.0,
-    0.0, 1.0,
-    1.0, 0.0,
-    1.0, 1.0,
-  ]), gl.STATIC_DRAW);
+  var triColors = [];
+  for (let i = 0; i < N_TRIANGLES; i++) {
+    var r = Math.random();
+    var g = Math.random();
+    var b = Math.random();
+    var a = Math.random();
 
-  // Turn on the attribute
-  gl.enableVertexAttribArray(imgTexCoordAttributeLocation);
+    for (let c = 0; c < 3; c++) {
+      triColors.push(r);
+      triColors.push(g);
+      triColors.push(b);
+      triColors.push(a);
+    }
+  }
 
-  // Tell the attribute how to get data out of texCoordBuffer (ARRAY_BUFFER)
-  var size = 2;          // 2 components per iteration
-  var type = gl.FLOAT;   // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-  var offset = 0;        // start at the beginning of the buffer
-  gl.vertexAttribPointer(
-    imgTexCoordAttributeLocation, size, type, normalize, stride, offset);
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array(triColors),
+    gl.STATIC_DRAW);
 
-  // Create a texture and put the image in it.
-  var targetImgTexture = gl.createTexture();
-  gl.activeTexture(gl.TEXTURE0 + 1);
-  gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
+  // tell the color attribute how to pull data out of the current ARRAY_BUFFER
+  gl.enableVertexAttribArray(triColorAttributeLocation);
+  var size = 4;
+  var type = gl.FLOAT;
+  var normalize = false;
+  var stride = 0;
+  var offset = 0;
+  gl.vertexAttribPointer(triColorAttributeLocation, size, type, normalize, stride, offset);
 
-  // Set up texture so we can render any size image and so we are
-  // working with pixels.
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+ // Tell it to use our program (pair of shaders)
+  gl.useProgram(triProgram);
 
-  // Upload the image into the texture.
-  var mipLevel = 0;               // the largest mip
-  var internalFormat = gl.RGBA;   // format we want in the texture
-  var srcFormat = gl.RGBA;        // format of data we are supplying
-  var srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
-  gl.texImage2D(gl.TEXTURE_2D,
-    mipLevel,
-    internalFormat,
-    srcFormat,
-    srcType,
-    TARGET_IMAGE);
+  // Bind the attribute/buffer set we want.
+  gl.bindVertexArray(triVao);
 
-  // Tell WebGL how to convert from clip space to pixels
+  // fb
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.uniform2f(triResolutionUniformLocation, IMAGE_W, IMAGE_H);
   gl.viewport(0, 0, IMAGE_W, IMAGE_H);
 
   // Clear the canvas
   gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.clear(gl.COLOR_BUFFER_BIT);
 
-  // Tell it to use our program (pair of shaders)
-  gl.useProgram(imgProgram);
-
-  // Bind the attribute/buffer set we want.
-  gl.bindVertexArray(imgVao);
+ 
 
   // Pass in the canvas resolution so we can convert from
   // pixels to clipspace in the shader
-  gl.uniform2f(imgResolutionLocation, IMAGE_W, IMAGE_H);
+  //gl.uniform2f(triResolutionUniformLocation, IMAGE_W, IMAGE_H);
 
-  // Tell the shader to get the texture from texture unit 0
-  gl.uniform1i(imgImageLocation, 1);
-
-  // Bind the position buffer so gl.bufferData that will be called
-  // in setRectangle puts data in the position buffer
-  gl.bindBuffer(gl.ARRAY_BUFFER, imgPositionBuffer);
-
-  // Set a rectangle the same size as the image.
-  setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
-
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.uniform2f(imgResolutionLocation, IMAGE_W, IMAGE_H);
-  gl.viewport(0, 0, IMAGE_W, IMAGE_H);
-
-  // Clear the canvas
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  // Draw the rectangle.
+  // draw
   var primitiveType = gl.TRIANGLES;
   var offset = 0;
-  var count = 6;
+  var count = N_TRIANGLES;
   gl.drawArrays(primitiveType, offset, count);
+
+  // 
+
+
+
+
+
+
+  // // setup GLSL program
+  // var imgProgram = webglUtils.createProgramFromSources(gl,
+  //   [imgVertexShaderSource, imgFragmentShaderSource]);
+
+  // // look up where the vertex data needs to go.
+  // var imgPositionAttributeLocation = gl.getAttribLocation(imgProgram, "a_position");
+  // var imgTexCoordAttributeLocation = gl.getAttribLocation(imgProgram, "a_texCoord");
+
+  // // lookup uniforms
+  // var imgResolutionLocation = gl.getUniformLocation(imgProgram, "u_resolution");
+  // var imgImageLocation = gl.getUniformLocation(imgProgram, "u_image");
+
+  // // Create a vertex array object (attribute state)
+  // var imgVao = gl.createVertexArray();
+
+  // // and make it the one we're currently working with
+  // gl.bindVertexArray(imgVao);
+
+  // // Create a buffer and put a single pixel space rectangle in
+  // // it (2 triangles)
+  // var imgPositionBuffer = gl.createBuffer();
+
+  // // Turn on the attribute
+  // gl.enableVertexAttribArray(imgPositionAttributeLocation);
+
+  // // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
+  // gl.bindBuffer(gl.ARRAY_BUFFER, imgPositionBuffer);
+
+  // // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
+  // var size = 2;          // 2 components per iteration
+  // var type = gl.FLOAT;   // the data is 32bit floats
+  // var normalize = false; // don't normalize the data
+  // var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+  // var offset = 0;        // start at the beginning of the buffer
+  // gl.vertexAttribPointer(
+  //   imgPositionAttributeLocation, size, type, normalize, stride, offset);
+
+  // // provide texture coordinates for the rectangle.
+  // var imgTexCoordBuffer = gl.createBuffer();
+  // gl.bindBuffer(gl.ARRAY_BUFFER, imgTexCoordBuffer);
+  // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+  //   0.0, 0.0,
+  //   1.0, 0.0,
+  //   0.0, 1.0,
+  //   0.0, 1.0,
+  //   1.0, 0.0,
+  //   1.0, 1.0,
+  // ]), gl.STATIC_DRAW);
+
+  // // Turn on the attribute
+  // gl.enableVertexAttribArray(imgTexCoordAttributeLocation);
+
+  // // Tell the attribute how to get data out of texCoordBuffer (ARRAY_BUFFER)
+  // var size = 2;          // 2 components per iteration
+  // var type = gl.FLOAT;   // the data is 32bit floats
+  // var normalize = false; // don't normalize the data
+  // var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+  // var offset = 0;        // start at the beginning of the buffer
+  // gl.vertexAttribPointer(
+  //   imgTexCoordAttributeLocation, size, type, normalize, stride, offset);
+
+  // // Create a texture and put the image in it.
+  // var targetImgTexture = gl.createTexture();
+  // gl.activeTexture(gl.TEXTURE0 + 1);
+  // gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
+
+  // // Set up texture so we can render any size image and so we are
+  // // working with pixels.
+  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+  // // Upload the image into the texture.
+  // var mipLevel = 0;               // the largest mip
+  // var internalFormat = gl.RGBA;   // format we want in the texture
+  // var srcFormat = gl.RGBA;        // format of data we are supplying
+  // var srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
+  // gl.texImage2D(gl.TEXTURE_2D,
+  //   mipLevel,
+  //   internalFormat,
+  //   srcFormat,
+  //   srcType,
+  //   TARGET_IMAGE);
+
+  // // Tell WebGL how to convert from clip space to pixels
+  // gl.viewport(0, 0, IMAGE_W, IMAGE_H);
+
+  // // Clear the canvas
+  // gl.clearColor(0, 0, 0, 0);
+  // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  // // Tell it to use our program (pair of shaders)
+  // gl.useProgram(imgProgram);
+
+  // // Bind the attribute/buffer set we want.
+  // gl.bindVertexArray(imgVao);
+
+  // // Pass in the canvas resolution so we can convert from
+  // // pixels to clipspace in the shader
+  // // gl.uniform2f(imgResolutionLocation, IMAGE_W, IMAGE_H);
+
+  // // Tell the shader to get the texture from texture unit 0
+  // gl.uniform1i(imgImageLocation, 0);
+
+  // // Bind the position buffer so gl.bufferData that will be called
+  // // in setRectangle puts data in the position buffer
+  // gl.bindBuffer(gl.ARRAY_BUFFER, imgPositionBuffer);
+
+  // // Set a rectangle the same size as the image.
+  // setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
+
+
+  // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  // gl.uniform2f(imgResolutionLocation, IMAGE_W, IMAGE_H);
+  // gl.viewport(0, 0, IMAGE_W, IMAGE_H);
+
+  // // Clear the canvas
+  // gl.clearColor(0, 0, 0, 0);
+  // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  // // Draw the rectangle.
+  // var primitiveType = gl.TRIANGLES;
+  // var offset = 0;
+  // var count = 6;
+  // gl.drawArrays(primitiveType, offset, count);
 }
 
 function setRectangle(gl, x, y, width, height) {
