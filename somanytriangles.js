@@ -67,7 +67,7 @@ function renderBestImage() {
   // working with pixels.
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
   // make the texture the same size as the image
@@ -92,8 +92,6 @@ function renderBestImage() {
 
   //// TRIANGLES
 
-  // var drawTriangles = function () {
-  // Use our boilerplate utils to compile the shaders and link into a program
   var triProgram = webglUtils.createProgramFromSources(gl, [triVertexShaderSource, triFragmentShaderSource]);
 
   // look up where the vertex data needs to go.
@@ -172,9 +170,6 @@ function renderBestImage() {
   // Bind the attribute/buffer set we want.
   gl.bindVertexArray(triVao);
 
-  // gl.activeTexture(gl.TEXTURE0 + 0);
-  // gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
-
   // fb
   gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
   gl.uniform2f(triResolutionUniformLocation, IMAGE_W, IMAGE_H);
@@ -186,24 +181,14 @@ function renderBestImage() {
 
 
 
-  // Pass in the canvas resolution so we can convert from
-  // pixels to clipspace in the shader
-  //gl.uniform2f(triResolutionUniformLocation, IMAGE_W, IMAGE_H);
-
   // draw
   var primitiveType = gl.TRIANGLES;
   var offset = 0;
   var count = N_TRIANGLES;
   gl.drawArrays(primitiveType, offset, count);
-  // }
-  // 
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-
-
-
-  // var drawImg = function () {
   // setup GLSL program
   var imgProgram = webglUtils.createProgramFromSources(gl,
     [imgVertexShaderSource, imgFragmentShaderSource]);
@@ -275,7 +260,7 @@ function renderBestImage() {
   // working with pixels.
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
   // Upload the image into the texture.
@@ -312,9 +297,13 @@ function renderBestImage() {
   gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
   gl.uniform1i(imgTriangleImageLocation, 0);
 
+  gl.generateMipmap(gl.TEXTURE_2D);
+
   gl.activeTexture(gl.TEXTURE0 + 1);
   gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
   gl.uniform1i(imgTargetImageLocation, 1);
+
+  gl.generateMipmap(gl.TEXTURE_2D);
 
   // Bind the position buffer so gl.bufferData that will be called
   // in setRectangle puts data in the position buffer
@@ -337,10 +326,6 @@ function renderBestImage() {
   var offset = 0;
   var count = 6;
   gl.drawArrays(primitiveType, offset, count);
-  // }
-
-  // requestAnimationFrame(drawTriangles);
-  // requestAnimationFrame(drawImg);
 }
 
 function setRectangle(gl, x, y, width, height) {

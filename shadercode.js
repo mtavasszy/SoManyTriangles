@@ -30,8 +30,8 @@ in vec2 v_texCoord;
 out vec4 outColor;
 
 void main() {
- vec4 targetCol = texture(u_targetImage, v_texCoord);
- vec4 triangleCol = texture(u_triangleImage, v_texCoord);
+ vec4 targetCol = textureLod(u_targetImage, v_texCoord, 4.0);
+ vec4 triangleCol = textureLod(u_triangleImage, v_texCoord, 4.0);
 
  vec3 diff = abs(triangleCol.xyz * triangleCol.w - targetCol.xyz * targetCol.w);
 
