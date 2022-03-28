@@ -55,22 +55,19 @@ function renderBestImage() {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.disable(gl.DEPTH_TEST);
 
-  function createAndSetupTexture(gl) {
-    var texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    // Set up texture so we can render any size image and so we are
-    // working with pixels.
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    return texture;
-  }
-
   // setup triangle
   // create empty triangle texture
-  var triangleTexture = createAndSetupTexture(gl);
+
+  var triangleTexture = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0 + 0);
+  gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
+
+  // Set up texture so we can render any size image and so we are
+  // working with pixels.
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
   // make the texture the same size as the image
   var mipLevel = 0;               // the largest mip
@@ -167,7 +164,16 @@ function renderBestImage() {
     imgTexCoordAttributeLocation, size, type, normalize, stride, offset);
 
   // Create a texture and put the image in it.
-  var targetImageTexture = createAndSetupTexture(gl);
+  var targetImgTexture = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0 + 1);
+  gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
+
+  // Set up texture so we can render any size image and so we are
+  // working with pixels.
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
   // Upload the image into the texture.
   var mipLevel = 0;               // the largest mip
@@ -199,7 +205,7 @@ function renderBestImage() {
   gl.uniform2f(imgResolutionLocation, IMAGE_W, IMAGE_H);
 
   // Tell the shader to get the texture from texture unit 0
-  gl.uniform1i(imgImageLocation, 0);
+  gl.uniform1i(imgImageLocation, 1);
 
   // Bind the position buffer so gl.bufferData that will be called
   // in setRectangle puts data in the position buffer
