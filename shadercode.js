@@ -1,6 +1,6 @@
 "use strict";
 
-var imageVertexShaderSource = `#version 300 es
+var imgVertexShaderSource = `#version 300 es
 in vec2 a_position;
 in vec2 a_texCoord;
 
@@ -19,7 +19,7 @@ void main() {
 }
 `;
 
-var imageFragmentShaderSource = `#version 300 es
+var imgFragmentShaderSource = `#version 300 es
 precision highp float;
 
 uniform sampler2D u_image;
@@ -33,7 +33,7 @@ void main() {
 }
 `;
 
-var triangleVertexShaderSource = `#version 300 es
+var triVertexShaderSource = `#version 300 es
 in vec2 a_position;
 in vec4 a_color;
 
@@ -51,7 +51,7 @@ void main() {
 }
 `;
 
-var triangleFragmentShaderSource = `#version 300 es
+var triFragmentShaderSource = `#version 300 es
 precision highp float;
 
 in vec4 v_color;
