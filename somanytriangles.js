@@ -55,6 +55,56 @@ function renderBestImage() {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.disable(gl.DEPTH_TEST);
 
+  function createAndSetupTexture(gl) {
+    var texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    // Set up texture so we can render any size image and so we are
+    // working with pixels.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    return texture;
+  }
+
+  // setup triangle
+  // create empty triangle texture
+  var triangleTexture = createAndSetupTexture(gl);
+
+  // make the texture the same size as the image
+  var mipLevel = 0;               // the largest mip
+  var internalFormat = gl.RGBA;   // format we want in the texture
+  var border = 0;                 // must be 0
+  var srcFormat = gl.RGBA;        // format of data we are supplying
+  var srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
+  var data = null;                // no data = create a blank texture
+  gl.texImage2D(
+    gl.TEXTURE_2D, mipLevel, internalFormat, IMAGE_W, IMAGE_H, border,
+    srcFormat, srcType, data);
+
+  // Create a framebuffer
+  var triangleFbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
+
+  // Attach a texture to it.
+  var attachmentPoint = gl.COLOR_ATTACHMENT0;
+  gl.framebufferTexture2D(
+    gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, triangleTexture, mipLevel);
+
+
+  // // Bind the position buffer so gl.bufferData that will be called
+  // // in setRectangle puts data in the position buffer
+  // gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+  // // Set a rectangle the same size as the image.
+  // setRectangle(gl, 0, 0, image.width, image.height);
+
+
+
+
+
+
   // setup GLSL program
   var imgProgram = webglUtils.createProgramFromSources(gl,
     [imgVertexShaderSource, imgFragmentShaderSource]);
@@ -116,21 +166,6 @@ function renderBestImage() {
   gl.vertexAttribPointer(
     imgTexCoordAttributeLocation, size, type, normalize, stride, offset);
 
-  // Create a texture.
-
-  function createAndSetupTexture(gl) {
-    var texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    // Set up texture so we can render any size image and so we are
-    // working with pixels.
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    return texture;
-  }
-
   // Create a texture and put the image in it.
   var targetImageTexture = createAndSetupTexture(gl);
 
@@ -140,45 +175,11 @@ function renderBestImage() {
   var srcFormat = gl.RGBA;        // format of data we are supplying
   var srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
   gl.texImage2D(gl.TEXTURE_2D,
-                mipLevel,
-                internalFormat,
-                srcFormat,
-                srcType,
-                TARGET_IMAGE);
-
-  // create empty triangle texture
-
-  // var triangleTexture = createAndSetupTexture(gl);
-
-  // // make the texture the same size as the image
-  // var mipLevel = 0;               // the largest mip
-  // var internalFormat = gl.RGBA;   // format we want in the texture
-  // var border = 0;                 // must be 0
-  // var srcFormat = gl.RGBA;        // format of data we are supplying
-  // var srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
-  // var data = null;                // no data = create a blank texture
-  // gl.texImage2D(
-  //     gl.TEXTURE_2D, mipLevel, internalFormat, IMAGE_W, IMAGE_H, border,
-  //     srcFormat, srcType, data);
-
-  // // Create a framebuffer
-  // var triangleFbo = gl.createFramebuffer();
-  // gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
-
-  // // Attach a texture to it.
-  // var attachmentPoint = gl.COLOR_ATTACHMENT0;
-  // gl.framebufferTexture2D(
-  //     gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, triangleTexture, mipLevel);
-  // }
-
-  // // Bind the position buffer so gl.bufferData that will be called
-  // // in setRectangle puts data in the position buffer
-  // gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
-  // // Set a rectangle the same size as the image.
-  // setRectangle(gl, 0, 0, image.width, image.height);
-
-
+    mipLevel,
+    internalFormat,
+    srcFormat,
+    srcType,
+    TARGET_IMAGE);
 
   // Tell WebGL how to convert from clip space to pixels
   gl.viewport(0, 0, IMAGE_W, IMAGE_H);
@@ -206,6 +207,15 @@ function renderBestImage() {
 
   // Set a rectangle the same size as the image.
   setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
+
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.uniform2f(imgResolutionLocation, IMAGE_W, IMAGE_H);
+  gl.viewport(0, 0, IMAGE_W, IMAGE_H);
+
+  // Clear the canvas
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Draw the rectangle.
   var primitiveType = gl.TRIANGLES;
