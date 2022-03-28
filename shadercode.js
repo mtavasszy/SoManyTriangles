@@ -22,14 +22,20 @@ void main() {
 var imgFragmentShaderSource = `#version 300 es
 precision highp float;
 
-uniform sampler2D u_image;
+uniform sampler2D u_targetImage;
+uniform sampler2D u_triangleImage;
 
 in vec2 v_texCoord;
 
 out vec4 outColor;
 
 void main() {
-  outColor = texture(u_image, v_texCoord);
+ vec4 targetCol = texture(u_targetImage, v_texCoord);
+ vec4 triangleCol = texture(u_triangleImage, v_texCoord);
+
+ vec3 diff = abs(triangleCol.xyz * triangleCol.w - targetCol.xyz * targetCol.w);
+
+  outColor = vec4(diff, 1.0);
 }
 `;
 

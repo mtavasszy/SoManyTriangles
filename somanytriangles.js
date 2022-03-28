@@ -214,7 +214,8 @@ function renderBestImage() {
 
   // lookup uniforms
   var imgResolutionLocation = gl.getUniformLocation(imgProgram, "u_resolution");
-  var imgImageLocation = gl.getUniformLocation(imgProgram, "u_image");
+  var imgTargetImageLocation = gl.getUniformLocation(imgProgram, "u_targetImage");
+  var imgTriangleImageLocation = gl.getUniformLocation(imgProgram, "u_triangleImage");
 
   // Create a vertex array object (attribute state)
   var imgVao = gl.createVertexArray();
@@ -309,8 +310,11 @@ function renderBestImage() {
   // Tell the shader to get the texture from texture unit 0
   gl.activeTexture(gl.TEXTURE0 + 0);
   gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
+  gl.uniform1i(imgTriangleImageLocation, 0);
 
-  gl.uniform1i(imgImageLocation, 0);
+  gl.activeTexture(gl.TEXTURE0 + 1);
+  gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
+  gl.uniform1i(imgTargetImageLocation, 1);
 
   // Bind the position buffer so gl.bufferData that will be called
   // in setRectangle puts data in the position buffer
