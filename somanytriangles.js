@@ -14,7 +14,10 @@ var gl = 0;
 var triProgram = 0;
 var triVao = 0;
 var triangleFbo = 0;
-var triResolutionUniformLocation = 0; // todo if it doesnt work recall this in render function
+var triResolutionUniformLocation = 0;
+var triMutIndexUniformLocation = 0;
+var triMutTypeUniformLocation = 0;
+var triMutNewValUniformLocation = 0;
 var triangleTexture = 0;
 
 // draw to canvas shader
@@ -100,6 +103,9 @@ function setupTriProgram() {
 
   // look up uniform locations
   triResolutionUniformLocation = gl.getUniformLocation(triProgram, "u_resolution");
+  triMutIndexUniformLocation = gl.getUniformLocation(triProgram, "u_mutIndex");
+  triMutTypeUniformLocation = gl.getUniformLocation(triProgram, "u_mutAttrType");
+  triMutNewValUniformLocation = gl.getUniformLocation(triProgram, "u_mutNewVal");
 
   // Create set of attributes
   triVao = gl.createVertexArray();
@@ -270,6 +276,9 @@ function renderTriangles() {
   // fb
   gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
   gl.uniform2f(triResolutionUniformLocation, IMAGE_W, IMAGE_H);
+  gl.uniform1i(triMutIndexUniformLocation, Math.floor(Math.random() * N_TRIANGLES * 3));
+  gl.uniform1i(triMutTypeUniformLocation, Math.floor(Math.random() * 6));
+  gl.uniform1f(triMutNewValUniformLocation, Math.random());
   gl.viewport(0, 0, IMAGE_W, IMAGE_H);
 
   // Clear the canvas
