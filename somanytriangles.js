@@ -6,26 +6,46 @@ var IMAGE_W = 0;
 var IMAGE_H = 0;
 
 var N_TRIANGLES = 50;
-// // 
 
-window.addEventListener('load', function () {
-  document.querySelector('#upload_target_image').addEventListener('change', function () {
-    if (this.files && this.files[0]) {
-      TARGET_IMAGE.onload = () => {
-        URL.revokeObjectURL(TARGET_IMAGE.src);  // no longer needed, free memory
-        updateCanvas();
-        renderBestImage();
+var canvas = 0;
+var gl = 0;
+
+// triangle  shader
+var triProgram = 0;
+var triVao = 0;
+var triangleFbo = 0;
+var triResolutionUniformLocation = 0; // todo if it doesnt work recall this in render function
+var triangleTexture = 0;
+
+// draw to canvas shader
+var imgProgram = 0;
+var imgVao = 0;
+var imgTriangleImageLocation = 0;
+var targetImgTexture = 0;
+var imgTargetImageLocation = 0;
+var imgResolutionLocation = 0;
+
+
+  // // 
+
+  window.addEventListener('load', function () {
+    document.querySelector('#upload_target_image').addEventListener('change', function () {
+      if (this.files && this.files[0]) {
+        TARGET_IMAGE.onload = () => {
+          URL.revokeObjectURL(TARGET_IMAGE.src);  // no longer needed, free memory
+          updateImageInfo();
+          render();
+        }
+
+        TARGET_IMAGE.src = URL.createObjectURL(this.files[0]); // set src to blob url
+        var targetImg = document.querySelector("#target_img");
+        targetImg.src = TARGET_IMAGE.src;
       }
-
-      TARGET_IMAGE.src = URL.createObjectURL(this.files[0]); // set src to blob url
-      var targetImg = document.querySelector("#target_img");
-      targetImg.src = TARGET_IMAGE.src;
-    }
+    });
   });
-});
 
 
-function updateCanvas() {
+function updateImageInfo() {
   IMAGE_W = TARGET_IMAGE.width;
   IMAGE_H = TARGET_IMAGE.height;
 
@@ -38,28 +58,8 @@ function updateCanvas() {
   canvas.height = IMAGE_H;
 }
 
-function renderBestImage() {
-  // Get A WebGL context
-  var canvas = document.querySelector("#canvas_best");
-  var gl = canvas.getContext("webgl2", {
-    antialias: false,
-    alpha: false,
-    premultipliedAlpha: false  // Ask for non-premultiplied alpha
-  });
-  if (!gl) {
-    console.error("WebGL 2 not available");
-    return;
-  }
-
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.disable(gl.DEPTH_TEST);
-
-  // setup triangle
-  // create empty triangle texture
-
-  var triangleTexture = gl.createTexture();
+function setupTriProgram(gl) {
+  triangleTexture = gl.createTexture();
   gl.activeTexture(gl.TEXTURE0 + 0);
   gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
 
@@ -82,7 +82,7 @@ function renderBestImage() {
     srcFormat, srcType, data);
 
   // Create a framebuffer
-  var triangleFbo = gl.createFramebuffer();
+  triangleFbo = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
 
   // Attach a texture to it.
@@ -92,17 +92,17 @@ function renderBestImage() {
 
   //// TRIANGLES
 
-  var triProgram = webglUtils.createProgramFromSources(gl, [triVertexShaderSource, triFragmentShaderSource]);
+  triProgram = webglUtils.createProgramFromSources(gl, [triVertexShaderSource, triFragmentShaderSource]);
 
   // look up where the vertex data needs to go.
   var triPositionAttributeLocation = gl.getAttribLocation(triProgram, "a_position");
   var triColorAttributeLocation = gl.getAttribLocation(triProgram, "a_color");
 
   // look up uniform locations
-  var triResolutionUniformLocation = gl.getUniformLocation(triProgram, "u_resolution");
+  triResolutionUniformLocation = gl.getUniformLocation(triProgram, "u_resolution");
 
   // Create set of attributes
-  var triVao = gl.createVertexArray();
+  triVao = gl.createVertexArray();
   gl.bindVertexArray(triVao);
 
   // Create a buffer for the positons.
@@ -163,47 +163,23 @@ function renderBestImage() {
   var stride = 0;
   var offset = 0;
   gl.vertexAttribPointer(triColorAttributeLocation, size, type, normalize, stride, offset);
+}
 
-  // Tell it to use our program (pair of shaders)
-  gl.useProgram(triProgram);
-
-  // Bind the attribute/buffer set we want.
-  gl.bindVertexArray(triVao);
-
-  // fb
-  gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
-  gl.uniform2f(triResolutionUniformLocation, IMAGE_W, IMAGE_H);
-  gl.viewport(0, 0, IMAGE_W, IMAGE_H);
-
-  // Clear the canvas
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-
-
-  // draw
-  var primitiveType = gl.TRIANGLES;
-  var offset = 0;
-  var count = N_TRIANGLES;
-  gl.drawArrays(primitiveType, offset, count);
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
+function setupRenderToCanvasProgram(gl) {
   // setup GLSL program
-  var imgProgram = webglUtils.createProgramFromSources(gl,
-    [imgVertexShaderSource, imgFragmentShaderSource]);
+  imgProgram = webglUtils.createProgramFromSources(gl, [imgVertexShaderSource, imgFragmentShaderSource]);
 
   // look up where the vertex data needs to go.
   var imgPositionAttributeLocation = gl.getAttribLocation(imgProgram, "a_position");
   var imgTexCoordAttributeLocation = gl.getAttribLocation(imgProgram, "a_texCoord");
 
   // lookup uniforms
-  var imgResolutionLocation = gl.getUniformLocation(imgProgram, "u_resolution");
-  var imgTargetImageLocation = gl.getUniformLocation(imgProgram, "u_targetImage");
-  var imgTriangleImageLocation = gl.getUniformLocation(imgProgram, "u_triangleImage");
+  imgResolutionLocation = gl.getUniformLocation(imgProgram, "u_resolution");
+  imgTargetImageLocation = gl.getUniformLocation(imgProgram, "u_targetImage");
+  imgTriangleImageLocation = gl.getUniformLocation(imgProgram, "u_triangleImage");
 
   // Create a vertex array object (attribute state)
-  var imgVao = gl.createVertexArray();
+  imgVao = gl.createVertexArray();
 
   // and make it the one we're currently working with
   gl.bindVertexArray(imgVao);
@@ -252,7 +228,7 @@ function renderBestImage() {
     imgTexCoordAttributeLocation, size, type, normalize, stride, offset);
 
   // Create a texture and put the image in it.
-  var targetImgTexture = gl.createTexture();
+  targetImgTexture = gl.createTexture();
   gl.activeTexture(gl.TEXTURE0 + 1);
   gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
 
@@ -275,7 +251,41 @@ function renderBestImage() {
     srcType,
     TARGET_IMAGE);
 
-  // Tell WebGL how to convert from clip space to pixels
+
+  // Bind the position buffer so gl.bufferData that will be called
+  // in setRectangle puts data in the position buffer
+  gl.bindBuffer(gl.ARRAY_BUFFER, imgPositionBuffer);
+
+  // Set a rectangle the same size as the image.
+  setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
+}
+
+function renderTriangles(gl) {
+  // Tell it to use our program (pair of shaders)
+  gl.useProgram(triProgram);
+
+  // Bind the attribute/buffer set we want.
+  gl.bindVertexArray(triVao);
+
+  // fb
+  gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
+  gl.uniform2f(triResolutionUniformLocation, IMAGE_W, IMAGE_H);
+  gl.viewport(0, 0, IMAGE_W, IMAGE_H);
+
+  // Clear the canvas
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // draw
+  var primitiveType = gl.TRIANGLES;
+  var offset = 0;
+  var count = N_TRIANGLES;
+  gl.drawArrays(primitiveType, offset, count);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+
+function renderToCanvas(gl) {
   gl.viewport(0, 0, IMAGE_W, IMAGE_H);
 
   // Clear the canvas
@@ -287,10 +297,6 @@ function renderBestImage() {
 
   // Bind the attribute/buffer set we want.
   gl.bindVertexArray(imgVao);
-
-  // Pass in the canvas resolution so we can convert from
-  // pixels to clipspace in the shader
-  // gl.uniform2f(imgResolutionLocation, IMAGE_W, IMAGE_H);
 
   // Tell the shader to get the texture from texture unit 0
   gl.activeTexture(gl.TEXTURE0 + 0);
@@ -305,12 +311,6 @@ function renderBestImage() {
 
   gl.generateMipmap(gl.TEXTURE_2D);
 
-  // Bind the position buffer so gl.bufferData that will be called
-  // in setRectangle puts data in the position buffer
-  gl.bindBuffer(gl.ARRAY_BUFFER, imgPositionBuffer);
-
-  // Set a rectangle the same size as the image.
-  setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
 
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -326,6 +326,32 @@ function renderBestImage() {
   var offset = 0;
   var count = 6;
   gl.drawArrays(primitiveType, offset, count);
+}
+
+function render() {
+  // Get A WebGL context
+  var canvas = document.querySelector("#canvas_best");
+  var gl = canvas.getContext("webgl2", {
+    antialias: false,
+    alpha: false,
+    premultipliedAlpha: false  // Ask for non-premultiplied alpha
+  });
+  if (!gl) {
+    console.error("WebGL 2 not available");
+    return;
+  }
+
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.disable(gl.DEPTH_TEST);
+
+  // setup triangle
+  // create empty triangle texture
+  setupTriProgram(gl);
+  renderTriangles(gl);
+  setupRenderToCanvasProgram(gl);
+  renderToCanvas(gl);
 }
 
 function setRectangle(gl, x, y, width, height) {
