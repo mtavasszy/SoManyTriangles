@@ -7,7 +7,7 @@ var IMAGE_H = 0;
 
 var N_TRIANGLES = 50;
 
-var canvas = 0;
+//var canvas = 0;
 var gl = 0;
 
 // triangle  shader
@@ -26,23 +26,23 @@ var imgTargetImageLocation = 0;
 var imgResolutionLocation = 0;
 
 
-  // // 
+// // 
 
-  window.addEventListener('load', function () {
-    document.querySelector('#upload_target_image').addEventListener('change', function () {
-      if (this.files && this.files[0]) {
-        TARGET_IMAGE.onload = () => {
-          URL.revokeObjectURL(TARGET_IMAGE.src);  // no longer needed, free memory
-          updateImageInfo();
-          render();
-        }
-
-        TARGET_IMAGE.src = URL.createObjectURL(this.files[0]); // set src to blob url
-        var targetImg = document.querySelector("#target_img");
-        targetImg.src = TARGET_IMAGE.src;
+window.addEventListener('load', function () {
+  document.querySelector('#upload_target_image').addEventListener('change', function () {
+    if (this.files && this.files[0]) {
+      TARGET_IMAGE.onload = () => {
+        URL.revokeObjectURL(TARGET_IMAGE.src);  // no longer needed, free memory
+        updateImageInfo();
+        render();
       }
-    });
+
+      TARGET_IMAGE.src = URL.createObjectURL(this.files[0]); // set src to blob url
+      var targetImg = document.querySelector("#target_img");
+      targetImg.src = TARGET_IMAGE.src;
+    }
   });
+});
 
 
 function updateImageInfo() {
@@ -58,7 +58,7 @@ function updateImageInfo() {
   canvas.height = IMAGE_H;
 }
 
-function setupTriProgram(gl) {
+function setupTriProgram() {
   triangleTexture = gl.createTexture();
   gl.activeTexture(gl.TEXTURE0 + 0);
   gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
@@ -67,7 +67,7 @@ function setupTriProgram(gl) {
   // working with pixels.
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
   // make the texture the same size as the image
@@ -165,7 +165,7 @@ function setupTriProgram(gl) {
   gl.vertexAttribPointer(triColorAttributeLocation, size, type, normalize, stride, offset);
 }
 
-function setupRenderToCanvasProgram(gl) {
+function setupRenderToCanvasProgram() {
   // setup GLSL program
   imgProgram = webglUtils.createProgramFromSources(gl, [imgVertexShaderSource, imgFragmentShaderSource]);
 
@@ -236,7 +236,7 @@ function setupRenderToCanvasProgram(gl) {
   // working with pixels.
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
   // Upload the image into the texture.
@@ -260,7 +260,7 @@ function setupRenderToCanvasProgram(gl) {
   setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
 }
 
-function renderTriangles(gl) {
+function renderTriangles() {
   // Tell it to use our program (pair of shaders)
   gl.useProgram(triProgram);
 
@@ -285,7 +285,7 @@ function renderTriangles(gl) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
-function renderToCanvas(gl) {
+function renderToCanvas() {
   gl.viewport(0, 0, IMAGE_W, IMAGE_H);
 
   // Clear the canvas
@@ -303,13 +303,13 @@ function renderToCanvas(gl) {
   gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
   gl.uniform1i(imgTriangleImageLocation, 0);
 
-  gl.generateMipmap(gl.TEXTURE_2D);
+  //gl.generateMipmap(gl.TEXTURE_2D);
 
   gl.activeTexture(gl.TEXTURE0 + 1);
   gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
   gl.uniform1i(imgTargetImageLocation, 1);
 
-  gl.generateMipmap(gl.TEXTURE_2D);
+  //gl.generateMipmap(gl.TEXTURE_2D);
 
 
 
@@ -331,7 +331,7 @@ function renderToCanvas(gl) {
 function render() {
   // Get A WebGL context
   var canvas = document.querySelector("#canvas_best");
-  var gl = canvas.getContext("webgl2", {
+  gl = canvas.getContext("webgl2", {
     antialias: false,
     alpha: false,
     premultipliedAlpha: false  // Ask for non-premultiplied alpha
@@ -348,10 +348,19 @@ function render() {
 
   // setup triangle
   // create empty triangle texture
-  setupTriProgram(gl);
-  renderTriangles(gl);
-  setupRenderToCanvasProgram(gl);
-  renderToCanvas(gl);
+  setupTriProgram();
+  setupRenderToCanvasProgram();
+
+  //while (true) {
+    requestAnimationFrame(renderLoop)
+  //}
+}
+
+function renderLoop() {
+  renderTriangles();
+  renderToCanvas();
+
+  requestAnimationFrame(renderLoop);
 }
 
 function setRectangle(gl, x, y, width, height) {
