@@ -7,7 +7,7 @@ var IMAGE_H = 0;
 
 var N_TRIANGLES = 50;
 
-//var canvas = 0;
+var canvas = 0;
 var gl = 0;
 
 // triangle  shader
@@ -56,14 +56,13 @@ function updateImageInfo() {
   targetImg.width = IMAGE_W;
   targetImg.height = IMAGE_H;
 
-  var canvas = document.querySelector("#canvas_best");
+  canvas = document.querySelector("#canvas_best");
   canvas.width = IMAGE_W;
   canvas.height = IMAGE_H;
 }
 
-function setupTriProgram() {
+function setupTextures() {
   triangleTexture = gl.createTexture();
-  gl.activeTexture(gl.TEXTURE0 + 0);
   gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
 
   // Set up texture so we can render any size image and so we are
@@ -80,22 +79,40 @@ function setupTriProgram() {
   var srcFormat = gl.RGBA;        // format of data we are supplying
   var srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
   var data = null;                // no data = create a blank texture
-  gl.texImage2D(
-    gl.TEXTURE_2D, mipLevel, internalFormat, IMAGE_W, IMAGE_H, border,
-    srcFormat, srcType, data);
+  gl.texImage2D(gl.TEXTURE_2D, mipLevel, internalFormat, IMAGE_W, IMAGE_H, border, srcFormat, srcType, data);
 
+  // Create a texture and put the image in it.
+  targetImgTexture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
+
+  // Set up texture so we can render any size image and so we are
+  // working with pixels.
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+  // Upload the image into the texture.
+  var mipLevel = 0;               // the largest mip
+  var internalFormat = gl.RGBA;   // format we want in the texture
+  var srcFormat = gl.RGBA;        // format of data we are supplying
+  var srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
+  gl.texImage2D(gl.TEXTURE_2D, mipLevel, internalFormat, srcFormat, srcType, TARGET_IMAGE);
+}
+
+function setupFrameBuffers() {
   // Create a framebuffer
   triangleFbo = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
 
   // Attach a texture to it.
   var attachmentPoint = gl.COLOR_ATTACHMENT0;
+  var mipLevel = 0;               // the largest mip
   gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, triangleTexture, mipLevel);
+}
 
-
-  //// TRIANGLES
-
-  triProgram = webglUtils.createProgramFromSources(gl, [triVertexShaderSource, triFragmentShaderSource]);
+function setupTriProgram() {
+  triProgram = webglUtils.createProgramFromSources(gl, [renderTriVertSource, renderTriFragSource]);
 
   // look up where the vertex data needs to go.
   var triPositionAttributeLocation = gl.getAttribLocation(triProgram, "a_position");
@@ -173,7 +190,7 @@ function setupTriProgram() {
 
 function setupRenderToCanvasProgram() {
   // setup GLSL program
-  imgProgram = webglUtils.createProgramFromSources(gl, [imgVertexShaderSource, imgFragmentShaderSource]);
+  imgProgram = webglUtils.createProgramFromSources(gl, [computeErrorVertSource, computeErrorFragSource]);
 
   // look up where the vertex data needs to go.
   var imgPositionAttributeLocation = gl.getAttribLocation(imgProgram, "a_position");
@@ -233,31 +250,6 @@ function setupRenderToCanvasProgram() {
   gl.vertexAttribPointer(
     imgTexCoordAttributeLocation, size, type, normalize, stride, offset);
 
-  // Create a texture and put the image in it.
-  targetImgTexture = gl.createTexture();
-  gl.activeTexture(gl.TEXTURE0 + 1);
-  gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
-
-  // Set up texture so we can render any size image and so we are
-  // working with pixels.
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-  // Upload the image into the texture.
-  var mipLevel = 0;               // the largest mip
-  var internalFormat = gl.RGBA;   // format we want in the texture
-  var srcFormat = gl.RGBA;        // format of data we are supplying
-  var srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
-  gl.texImage2D(gl.TEXTURE_2D,
-    mipLevel,
-    internalFormat,
-    srcFormat,
-    srcType,
-    TARGET_IMAGE);
-
-
   // Bind the position buffer so gl.bufferData that will be called
   // in setRectangle puts data in the position buffer
   gl.bindBuffer(gl.ARRAY_BUFFER, imgPositionBuffer);
@@ -308,13 +300,13 @@ function renderToCanvas() {
   gl.bindVertexArray(imgVao);
 
   // Tell the shader to get the texture from texture unit 0
-  gl.activeTexture(gl.TEXTURE0 + 0);
+  gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
   gl.uniform1i(imgTriangleImageLocation, 0);
 
   //gl.generateMipmap(gl.TEXTURE_2D);
 
-  gl.activeTexture(gl.TEXTURE0 + 1);
+  gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
   gl.uniform1i(imgTargetImageLocation, 1);
 
@@ -339,7 +331,6 @@ function renderToCanvas() {
 
 function render() {
   // Get A WebGL context
-  var canvas = document.querySelector("#canvas_best");
   gl = canvas.getContext("webgl2", {
     antialias: false,
     alpha: false,
@@ -355,8 +346,9 @@ function render() {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.disable(gl.DEPTH_TEST);
 
-  // setup triangle
-  // create empty triangle texture
+  setupTextures();
+  setupFrameBuffers();
+
   setupTriProgram();
   setupRenderToCanvasProgram();
 
