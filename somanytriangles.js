@@ -18,15 +18,21 @@ var triResolutionUniformLocation = 0;
 var triMutIndexUniformLocation = 0;
 var triMutTypeUniformLocation = 0;
 var triMutNewValUniformLocation = 0;
-var triangleTexture = 0;
+
+// similarity shader
+var similarityFbo = 0;
 
 // draw to canvas shader
 var imgProgram = 0;
 var imgVao = 0;
 var imgTriangleImageLocation = 0;
-var targetImgTexture = 0;
 var imgTargetImageLocation = 0;
 var imgResolutionLocation = 0;
+
+// textures
+var triangleTexture = 0;
+var targetImgTexture = 0;
+var similarityTexture = 0;
 
 
 // // 
@@ -62,42 +68,41 @@ function updateImageInfo() {
 }
 
 function setupTextures() {
+  //
   triangleTexture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
 
-  // Set up texture so we can render any size image and so we are
-  // working with pixels.
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-  // make the texture the same size as the image
-  var mipLevel = 0;               // the largest mip
-  var internalFormat = gl.RGBA;   // format we want in the texture
-  var border = 0;                 // must be 0
-  var srcFormat = gl.RGBA;        // format of data we are supplying
-  var srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
-  var data = null;                // no data = create a blank texture
-  gl.texImage2D(gl.TEXTURE_2D, mipLevel, internalFormat, IMAGE_W, IMAGE_H, border, srcFormat, srcType, data);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, IMAGE_W, IMAGE_H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  // (gl.TEXTURE_2D, mipLevel, internalFormat, IMAGE_W, IMAGE_H, border, srcFormat, srcType, data)
 
-  // Create a texture and put the image in it.
+  //
   targetImgTexture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
 
-  // Set up texture so we can render any size image and so we are
-  // working with pixels.
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-  // Upload the image into the texture.
-  var mipLevel = 0;               // the largest mip
-  var internalFormat = gl.RGBA;   // format we want in the texture
-  var srcFormat = gl.RGBA;        // format of data we are supplying
-  var srcType = gl.UNSIGNED_BYTE; // type of data we are supplying
-  gl.texImage2D(gl.TEXTURE_2D, mipLevel, internalFormat, srcFormat, srcType, TARGET_IMAGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, TARGET_IMAGE);
+
+  //
+  similarityTexture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, similarityTexture);
+
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, IMAGE_W, IMAGE_H, 0, gl.RED, gl.FLOAT, null);
+
+  gl.bindTexture(gl.TEXTURE_2D, null);
 }
 
 function setupFrameBuffers() {
@@ -109,6 +114,17 @@ function setupFrameBuffers() {
   var attachmentPoint = gl.COLOR_ATTACHMENT0;
   var mipLevel = 0;               // the largest mip
   gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, triangleTexture, mipLevel);
+
+  // Create a framebuffer
+  similarityFbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, similarityFbo);
+
+  // Attach a texture to it.
+  var attachmentPoint = gl.COLOR_ATTACHMENT0;
+  var mipLevel = 0;               // the largest mip
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, similarityTexture, mipLevel);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
 function setupTriProgram() {
@@ -190,7 +206,7 @@ function setupTriProgram() {
 
 function setupRenderToCanvasProgram() {
   // setup GLSL program
-  imgProgram = webglUtils.createProgramFromSources(gl, [computeErrorVertSource, computeErrorFragSource]);
+  imgProgram = webglUtils.createProgramFromSources(gl, [similarityVertSource, similarityFragSource]);
 
   // look up where the vertex data needs to go.
   var imgPositionAttributeLocation = gl.getAttribLocation(imgProgram, "a_position");
@@ -346,6 +362,10 @@ function render() {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.disable(gl.DEPTH_TEST);
 
+  if (!gl.getExtension("EXT_color_buffer_float")) {
+    console.error("FLOAT color buffer not available");
+  }
+
   setupTextures();
   setupFrameBuffers();
 
@@ -353,7 +373,7 @@ function render() {
   setupRenderToCanvasProgram();
 
   //while (true) {
-    requestAnimationFrame(renderLoop)
+  requestAnimationFrame(renderLoop)
   //}
 }
 

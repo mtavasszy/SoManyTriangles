@@ -39,7 +39,7 @@ void main() {
 }
 `;
 
-var computeErrorVertSource = `#version 300 es
+var similarityVertSource = `#version 300 es
 in vec2 a_position;
 in vec2 a_texCoord;
 
@@ -58,7 +58,7 @@ void main() {
 }
 `;
 
-var computeErrorFragSource = `#version 300 es
+var similarityFragSource = `#version 300 es
 precision highp float;
 
 uniform sampler2D u_targetImage;
