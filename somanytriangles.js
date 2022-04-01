@@ -20,14 +20,18 @@ var triMutTypeUniformLocation = 0;
 var triMutNewValUniformLocation = 0;
 
 // similarity shader
-var similarityFbo = 0;
-
-// draw to canvas shader
 var similarityProgram = 0;
 var similarityVao = 0;
+var similarityFbo = 0;
 var similarityTriangleImageLocation = 0;
 var similarityTargetImageLocation = 0;
 var similarityResolutionLocation = 0;
+
+// draw to canvas shader
+var rtcProgram = 0;
+var rtcVao = 0;
+var rtcImageLocation = 0;
+var rtcResolutionLocation = 0;
 
 // textures
 var triangleTexture = 0;
@@ -97,10 +101,11 @@ function setupTextures() {
 
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, IMAGE_W, IMAGE_H, 0, gl.RED, gl.FLOAT, null);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, IMAGE_W, IMAGE_H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  // gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, IMAGE_W, IMAGE_H, 0, gl.RED, gl.FLOAT, null);
 
   gl.bindTexture(gl.TEXTURE_2D, null);
 }
@@ -274,6 +279,74 @@ function setupSimilarityProgram() {
   setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
 }
 
+function setupRenderToCanvasProgram() {
+  // setup GLSL program
+  rtcProgram = webglUtils.createProgramFromSources(gl, [rtcVertSource, rtcFragSource]);
+
+  // look up where the vertex data needs to go.
+  var rtcPositionAttributeLocation = gl.getAttribLocation(rtcProgram, "a_position");
+  var rtcTexCoordAttributeLocation = gl.getAttribLocation(rtcProgram, "a_texCoord");
+
+  // lookup uniforms
+  rtcResolutionLocation = gl.getUniformLocation(rtcProgram, "u_resolution");
+  rtcImageLocation = gl.getUniformLocation(rtcProgram, "u_image");
+
+  // Create a vertex array object (attribute state)
+  rtcVao = gl.createVertexArray();
+
+  // and make it the one we're currently working with
+  gl.bindVertexArray(rtcVao);
+
+  // Create a buffer and put a single pixel space rectangle in
+  // it (2 triangles)
+  var rtcPositionBuffer = gl.createBuffer();
+
+  // Turn on the attribute
+  gl.enableVertexAttribArray(rtcPositionAttributeLocation);
+
+  // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
+  gl.bindBuffer(gl.ARRAY_BUFFER, rtcPositionBuffer);
+
+  // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
+  var size = 2;          // 2 components per iteration
+  var type = gl.FLOAT;   // the data is 32bit floats
+  var normalize = false; // don't normalize the data
+  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+  var offset = 0;        // start at the beginning of the buffer
+  gl.vertexAttribPointer(rtcPositionAttributeLocation, size, type, normalize, stride, offset);
+
+  // provide texture coordinates for the rectangle.
+  var rtcTexCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, rtcTexCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    0.0, 0.0,
+    1.0, 0.0,
+    0.0, 1.0,
+    0.0, 1.0,
+    1.0, 0.0,
+    1.0, 1.0,
+  ]), gl.STATIC_DRAW);
+
+  // Turn on the attribute
+  gl.enableVertexAttribArray(rtcTexCoordAttributeLocation);
+
+  // Tell the attribute how to get data out of texCoordBuffer (ARRAY_BUFFER)
+  var size = 2;          // 2 components per iteration
+  var type = gl.FLOAT;   // the data is 32bit floats
+  var normalize = false; // don't normalize the data
+  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+  var offset = 0;        // start at the beginning of the buffer
+  gl.vertexAttribPointer(
+    rtcTexCoordAttributeLocation, size, type, normalize, stride, offset);
+
+  // Bind the position buffer so gl.bufferData that will be called
+  // in setRectangle puts data in the position buffer
+  gl.bindBuffer(gl.ARRAY_BUFFER, rtcPositionBuffer);
+
+  // Set a rectangle the same size as the image.
+  setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
+}
+
 function renderTriangles() {
   // Tell it to use our program (pair of shaders)
   gl.useProgram(triProgram);
@@ -303,6 +376,49 @@ function renderTriangles() {
 }
 
 function renderSimilarity() {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, similarityFbo);
+  
+  gl.viewport(0, 0, IMAGE_W, IMAGE_H);
+  
+  // Clear the canvas
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  
+  // Tell it to use our program (pair of shaders)
+  gl.useProgram(similarityProgram);
+  
+  // Bind the attribute/buffer set we want.
+  gl.bindVertexArray(similarityVao);
+  
+  // Tell the shader to get the texture from texture unit 0
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
+  gl.uniform1i(similarityTriangleImageLocation, 0);
+
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
+  gl.uniform1i(similarityTargetImageLocation, 1);
+
+  //gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.uniform2f(similarityResolutionLocation, IMAGE_W, IMAGE_H);
+  gl.viewport(0, 0, IMAGE_W, IMAGE_H);
+
+  // Clear the canvas
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  // Draw the rectangle.
+  var primitiveType = gl.TRIANGLES;
+  var offset = 0;
+  var count = 6;
+  gl.drawArrays(primitiveType, offset, count);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+
+function renderToCanvas() {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
   gl.viewport(0, 0, IMAGE_W, IMAGE_H);
 
   // Clear the canvas
@@ -310,26 +426,21 @@ function renderSimilarity() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Tell it to use our program (pair of shaders)
-  gl.useProgram(similarityProgram);
+  gl.useProgram(rtcProgram);
 
   // Bind the attribute/buffer set we want.
-  gl.bindVertexArray(similarityVao);
+  gl.bindVertexArray(rtcVao);
+
 
   // Tell the shader to get the texture from texture unit 0
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
-  gl.uniform1i(similarityTriangleImageLocation, 0);
+  gl.bindTexture(gl.TEXTURE_2D, similarityTexture);
+  gl.uniform1i(rtcImageLocation, 0);
 
   //gl.generateMipmap(gl.TEXTURE_2D);
 
-  gl.activeTexture(gl.TEXTURE1);
-  gl.bindTexture(gl.TEXTURE_2D, targetImgTexture);
-  gl.uniform1i(similarityTargetImageLocation, 1);
-
-  //gl.generateMipmap(gl.TEXTURE_2D);
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.uniform2f(similarityResolutionLocation, IMAGE_W, IMAGE_H);
+  //gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.uniform2f(rtcResolutionLocation, IMAGE_W, IMAGE_H);
   gl.viewport(0, 0, IMAGE_W, IMAGE_H);
 
   // Clear the canvas
@@ -360,15 +471,19 @@ function render() {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.disable(gl.DEPTH_TEST);
 
-  if (!gl.getExtension("EXT_color_buffer_float")) {
-    console.error("FLOAT color buffer not available");
-  }
+  // if (!gl.getExtension("EXT_color_buffer_float")) {
+  //   console.error("FLOAT color buffer not available");
+  // }
+  // if (!gl.getExtension("OES_texture_float_linear")) {
+  //   console.error("FLOAT color buffer filtering not available");
+  // }
 
   setupTextures();
   setupFrameBuffers();
 
   setupTriProgram();
   setupSimilarityProgram();
+  setupRenderToCanvasProgram();
 
   requestAnimationFrame(renderLoop)
 }
@@ -376,6 +491,7 @@ function render() {
 function renderLoop() {
   renderTriangles();
   renderSimilarity();
+  renderToCanvas();
 
   requestAnimationFrame(renderLoop);
 }
