@@ -26,6 +26,7 @@ var similarityFbo = 0;
 var similarityTriangleImageLocation = 0;
 var similarityTargetImageLocation = 0;
 var similarityResolutionLocation = 0;
+var similarityMaxMipLvls = 0;
 
 // draw to canvas shader
 var rtcProgram = 0;
@@ -69,6 +70,8 @@ function updateImageInfo() {
   canvas = document.querySelector("#canvas_best");
   canvas.width = IMAGE_W;
   canvas.height = IMAGE_H;
+
+  similarityMaxMipLvls = Math.floor(Math.log2(Math.max(IMAGE_W, IMAGE_H)));
 }
 
 function setupTextures() {
@@ -101,11 +104,10 @@ function setupTextures() {
 
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST );
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, IMAGE_W, IMAGE_H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-  // gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, IMAGE_W, IMAGE_H, 0, gl.RED, gl.FLOAT, null);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, IMAGE_W, IMAGE_H, 0, gl.RED, gl.FLOAT, null);
 
   gl.bindTexture(gl.TEXTURE_2D, null);
 }
@@ -437,7 +439,7 @@ function renderToCanvas() {
   gl.bindTexture(gl.TEXTURE_2D, similarityTexture);
   gl.uniform1i(rtcImageLocation, 0);
 
-  //gl.generateMipmap(gl.TEXTURE_2D);
+  gl.generateMipmap(gl.TEXTURE_2D);
 
   //gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.uniform2f(rtcResolutionLocation, IMAGE_W, IMAGE_H);
@@ -471,12 +473,12 @@ function render() {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.disable(gl.DEPTH_TEST);
 
-  // if (!gl.getExtension("EXT_color_buffer_float")) {
-  //   console.error("FLOAT color buffer not available");
-  // }
-  // if (!gl.getExtension("OES_texture_float_linear")) {
-  //   console.error("FLOAT color buffer filtering not available");
-  // }
+  if (!gl.getExtension("EXT_color_buffer_float")) {
+    console.error("FLOAT color buffer not available");
+  }
+  if (!gl.getExtension("OES_texture_float_linear")) {
+    console.error("FLOAT color buffer filtering not available");
+  }
 
   setupTextures();
   setupFrameBuffers();

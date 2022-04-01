@@ -66,9 +66,11 @@ void main() {
   vec4 targetCol = texture(u_targetImage, v_texCoord);
   vec4 triangleCol = texture(u_triangleImage, v_texCoord);
 
-  vec3 diff = abs(triangleCol.xyz * triangleCol.w - targetCol.xyz * targetCol.w);
+  vec3 diff = abs(targetCol.xyz * targetCol.w - triangleCol.xyz * triangleCol.w);
 
-  outColor = vec4(diff, 1.0);
+  float similarity = 1.0 - (diff.x + diff.y + diff.z) * 0.3333; 
+
+  outColor = vec4(vec3(similarity), 1.0);
 }
 `;
 
