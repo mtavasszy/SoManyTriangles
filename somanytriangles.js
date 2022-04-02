@@ -119,7 +119,7 @@ function setupTextures() {
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, IMAGE_W, IMAGE_H, 0, gl.RED, gl.FLOAT, null);
 
   //
-  bestSimilarityTexture0 = gl.createTexture();
+  bestSimilarityTexture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture);
 
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -129,15 +129,15 @@ function setupTextures() {
 
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 1, 1, 0, gl.RED, gl.FLOAT, new Float32Array([0]));
 
-  bestSimilarityTexture1 = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture);
+  // bestSimilarityTexture1 = gl.createTexture();
+  // gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture);
 
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 1, 1, 0, gl.RED, gl.FLOAT, new Float32Array([0]));
+  // gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 1, 1, 0, gl.RED, gl.FLOAT, new Float32Array([0]));
 
   gl.bindTexture(gl.TEXTURE_2D, null);
 }
@@ -567,6 +567,19 @@ function renderCopyBest() {
   var count = 6;
   gl.drawArrays(primitiveType, offset, count);
 
+  gl.readBuffer(gl.COLOR_ATTACHMENT0);
+
+  const data = new Float32Array(4);
+  gl.readPixels(
+    0,            // x
+    0,            // y
+    1,                 // width
+    1,                 // height
+    gl.RGBA,           // format
+    gl.FLOAT,  // type
+    data);             // typed array to hold result
+  console.log(data[0]);
+
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
@@ -624,10 +637,10 @@ function render() {
   gl.disable(gl.DEPTH_TEST);
 
   if (!gl.getExtension("EXT_color_buffer_float")) {
-    console.error("FLOAT color buffer not available");
+    console.error("EXT_color_buffer_float not available");
   }
   if (!gl.getExtension("OES_texture_float_linear")) {
-    console.error("FLOAT color buffer filtering not available");
+    console.error("OES_texture_float_linear not available");
   }
 
   setupTextures();
