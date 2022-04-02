@@ -116,3 +116,37 @@ void main() {
   outColor = vec4(v_color.xyz, 1.0);
 }
 `;
+
+var copyBestVertSource = `#version 300 es
+in vec2 a_position;
+in vec2 a_texCoord;
+
+uniform vec2 u_resolution;
+
+out vec2 v_texCoord;
+
+void main() {
+
+  // convert the position from pixels to clip space
+  vec2 clipSpace = (a_position / u_resolution) * 2.0 -1.0;
+
+  gl_Position = vec4(clipSpace, 0, 1);
+
+  v_texCoord = a_texCoord;
+}
+`;
+
+var copyBestFragSource = `#version 300 es
+precision highp float;
+
+uniform sampler2D u_similarityImage;
+uniform float u_maxMipLvl;
+
+in vec2 v_texCoord;
+
+out vec4 outColor;
+
+void main() {
+  outColor = textureLod(u_similarityImage, v_texCoord, u_maxMipLvl);
+}
+`;
