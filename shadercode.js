@@ -140,6 +140,7 @@ var copyBestFragSource = `#version 300 es
 precision highp float;
 
 uniform sampler2D u_similarityImage;
+uniform sampler2D u_maxSimilarityImage;
 uniform float u_maxMipLvl;
 
 in vec2 v_texCoord;
@@ -147,6 +148,7 @@ in vec2 v_texCoord;
 out vec4 outColor;
 
 void main() {
-  outColor = textureLod(u_similarityImage, v_texCoord, u_maxMipLvl);
+  float maxVal = max(textureLod(u_similarityImage, v_texCoord, u_maxMipLvl).x, texture(u_maxSimilarityImage, v_texCoord).x);
+  outColor = vec4(maxVal,0,0,1);
 }
 `;

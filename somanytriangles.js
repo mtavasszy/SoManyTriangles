@@ -29,12 +29,14 @@ var similarityResolutionLocation = 0;
 var similarityMaxMipLvl = 0;
 
 // copy best similarity shader
+var copyBestCurrent = 0;
 var copyBestProgram = 0;
 var copyBestVao = 0;
-var copyBestFbo = 0;
+var copyBestFbo = [];
 var copyBestResolutionLocation = 0;
 var copyBestMaxMipmapLvlLocation = 0;
 var copyBestSimilarityImageLocation = 0;
+var copyBestMaxSimilarityImageLocation = 0;
 
 // render to canvas shader
 var rtcProgram = 0;
@@ -46,7 +48,7 @@ var rtcResolutionLocation = 0;
 var triangleTexture = 0;
 var targetImgTexture = 0;
 var similarityTexture = 0;
-var bestSimilarityTexture = 0;
+var bestSimilarityTexture = [];
 
 
 // // 
@@ -119,8 +121,8 @@ function setupTextures() {
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, IMAGE_W, IMAGE_H, 0, gl.RED, gl.FLOAT, null);
 
   //
-  bestSimilarityTexture = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture);
+  bestSimilarityTexture[0] = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture[0]);
 
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -129,15 +131,15 @@ function setupTextures() {
 
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 1, 1, 0, gl.RED, gl.FLOAT, new Float32Array([0]));
 
-  // bestSimilarityTexture1 = gl.createTexture();
-  // gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture);
+  bestSimilarityTexture[1] = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture[1]);
 
-  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-  // gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 1, 1, 0, gl.RED, gl.FLOAT, new Float32Array([0]));
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 1, 1, 0, gl.RED, gl.FLOAT, new Float32Array([0]));
 
   gl.bindTexture(gl.TEXTURE_2D, null);
 }
@@ -166,13 +168,22 @@ function setupFrameBuffers() {
   //
 
   // Create a framebuffer
-  copyBestFbo = gl.createFramebuffer();
-  gl.bindFramebuffer(gl.FRAMEBUFFER, copyBestFbo);
+  copyBestFbo[0] = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, copyBestFbo[0]);
 
   // Attach a texture to it.
   var attachmentPoint = gl.COLOR_ATTACHMENT0;
   var mipLevel = 0;               // the largest mip
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, bestSimilarityTexture, mipLevel);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, bestSimilarityTexture[0], mipLevel);
+
+  // Create a framebuffer
+  copyBestFbo[1] = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, copyBestFbo[1]);
+
+  // Attach a texture to it.
+  var attachmentPoint = gl.COLOR_ATTACHMENT0;
+  var mipLevel = 0;               // the largest mip
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, bestSimilarityTexture[1], mipLevel);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
@@ -336,6 +347,7 @@ function setupCopyBestProgram() {
   copyBestResolutionLocation = gl.getUniformLocation(copyBestProgram, "u_resolution");
   copyBestMaxMipmapLvlLocation = gl.getUniformLocation(copyBestProgram, "u_maxMipLvl");
   copyBestSimilarityImageLocation = gl.getUniformLocation(copyBestProgram, "u_similarityImage");
+  copyBestMaxSimilarityImageLocation = gl.getUniformLocation(copyBestProgram, "u_maxSimilarityImage");
 
   // Create a vertex array object (attribute state)
   copyBestVao = gl.createVertexArray();
@@ -530,7 +542,7 @@ function renderSimilarity() {
 }
 
 function renderCopyBest() {
-  gl.bindFramebuffer(gl.FRAMEBUFFER, copyBestFbo);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, copyBestFbo[copyBestCurrent]);
 
   gl.viewport(0, 0, 1, 1);
 
@@ -552,7 +564,12 @@ function renderCopyBest() {
 
   gl.uniform1i(copyBestSimilarityImageLocation, 0);
 
-  //gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  // Tell the shader to get the texture from texture unit 0
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture[1 - copyBestCurrent]);
+
+  gl.uniform1i(copyBestMaxSimilarityImageLocation, 1);
+
   gl.uniform1f(copyBestMaxMipmapLvlLocation, similarityMaxMipLvl);
   gl.uniform2f(copyBestResolutionLocation, 1, 1);
   gl.viewport(0, 0, 1, 1);
@@ -567,6 +584,9 @@ function renderCopyBest() {
   var count = 6;
   gl.drawArrays(primitiveType, offset, count);
 
+  copyBestCurrent = 1 - copyBestCurrent;
+
+
   gl.readBuffer(gl.COLOR_ATTACHMENT0);
 
   const data = new Float32Array(4);
@@ -579,6 +599,7 @@ function renderCopyBest() {
     gl.FLOAT,  // type
     data);             // typed array to hold result
   console.log(data[0]);
+
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
@@ -601,7 +622,7 @@ function renderToCanvas() {
 
   // Tell the shader to get the texture from texture unit 0
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture);
+  gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture[0]);
   gl.uniform1i(rtcImageLocation, 0);
 
   //gl.bindFramebuffer(gl.FRAMEBUFFER, null);
