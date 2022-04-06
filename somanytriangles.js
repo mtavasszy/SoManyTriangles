@@ -622,7 +622,7 @@ function renderToCanvas() {
 
   // Tell the shader to get the texture from texture unit 0
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture[0]);
+  gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
   gl.uniform1i(rtcImageLocation, 0);
 
   //gl.bindFramebuffer(gl.FRAMEBUFFER, null);

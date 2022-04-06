@@ -113,7 +113,7 @@ in vec4 v_color;
 out vec4 outColor;
 
 void main() {
-  outColor = vec4(v_color.xyz, 1.0);
+  outColor = v_color;
 }
 `;
 
