@@ -12,12 +12,14 @@ var gl = 0;
 
 // triangle  shader
 var triProgram = 0;
-var triVao = 0;
+var triVaos = [];
+var triTfs = [];
 var triangleFbo = 0;
 var triResolutionUniformLocation = 0;
 var triMutIndexUniformLocation = 0;
 var triMutTypeUniformLocation = 0;
 var triMutNewValUniformLocation = 0;
+var triCurrent = 0;
 
 // similarity shader
 var similarityProgram = 0;
@@ -188,8 +190,38 @@ function setupFrameBuffers() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
+function createShader(gl, type, src) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, src);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    throw new Error(gl.getShaderInfoLog(shader));
+  }
+  return shader;
+}
+
+function createProgram(gl, shaderSources, transformFeedbackVaryings) {
+  const program = gl.createProgram();
+  [gl.VERTEX_SHADER, gl.FRAGMENT_SHADER].forEach((type, ndx) => {
+    const shader = createShader(gl, type, shaderSources[ndx]);
+    gl.attachShader(program, shader);
+  });
+  if (transformFeedbackVaryings) {
+    gl.transformFeedbackVaryings(
+      program,
+      transformFeedbackVaryings,
+      gl.SEPARATE_ATTRIBS,
+    );
+  }
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    throw new Error(gl.getProgramParameter(program));
+  }
+  return program;
+}
+
 function setupTriProgram() {
-  triProgram = webglUtils.createProgramFromSources(gl, [renderTriVertSource, renderTriFragSource]);
+  triProgram = createProgram(gl, [renderTriVertSource, renderTriFragSource], ['tf_position', 'tf_color']);
 
   // look up where the vertex data needs to go.
   var triPositionAttributeLocation = gl.getAttribLocation(triProgram, "a_position");
@@ -201,39 +233,12 @@ function setupTriProgram() {
   triMutTypeUniformLocation = gl.getUniformLocation(triProgram, "u_mutAttrType");
   triMutNewValUniformLocation = gl.getUniformLocation(triProgram, "u_mutNewVal");
 
-  // Create set of attributes
-  triVao = gl.createVertexArray();
-  gl.bindVertexArray(triVao);
-
-  // Create a buffer for the positons.
-  var triPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, triPositionBuffer);
-
+  // random triangles
   var triPositions = [];
   for (let i = 0; i < N_TRIANGLES * 3; i++) {
     triPositions.push(Math.random() * IMAGE_W);  // random x
     triPositions.push(Math.random() * IMAGE_H);  // random y
   }
-
-  // Set Geometry.
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array(triPositions),
-    gl.STATIC_DRAW);
-
-  // tell the position attribute how to pull data out of the current ARRAY_BUFFER
-  gl.enableVertexAttribArray(triPositionAttributeLocation);
-  var size = 2;
-  var type = gl.FLOAT;
-  var normalize = false;
-  var stride = 0;
-  var offset = 0;
-  gl.vertexAttribPointer(triPositionAttributeLocation, size, type, normalize, stride, offset);
-
-  // Create a buffer for the colors.
-  var triColorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, triColorBuffer);
-  // Set the colors.
 
   var triColors = [];
   for (let i = 0; i < N_TRIANGLES; i++) {
@@ -250,10 +255,33 @@ function setupTriProgram() {
     }
   }
 
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array(triColors),
-    gl.STATIC_DRAW);
+  // VAO 0
+  // Create set of attributes
+  triVaos[0] = gl.createVertexArray();
+  gl.bindVertexArray(triVaos[0]);
+
+  // Create a buffer for the positons.
+  var triPositionBuffer0 = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, triPositionBuffer0);
+
+  // Set Geometry.
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triPositions), gl.DYNAMIC_DRAW);
+
+  // tell the position attribute how to pull data out of the current ARRAY_BUFFER
+  gl.enableVertexAttribArray(triPositionAttributeLocation);
+  var size = 2;
+  var type = gl.FLOAT;
+  var normalize = false;
+  var stride = 0;
+  var offset = 0;
+  gl.vertexAttribPointer(triPositionAttributeLocation, size, type, normalize, stride, offset);
+
+  // Create a buffer for the colors.
+  var triColorBuffer0 = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, triColorBuffer0);
+  // Set the colors.
+
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triColors), gl.DYNAMIC_DRAW);
 
   // tell the color attribute how to pull data out of the current ARRAY_BUFFER
   gl.enableVertexAttribArray(triColorAttributeLocation);
@@ -263,6 +291,66 @@ function setupTriProgram() {
   var stride = 0;
   var offset = 0;
   gl.vertexAttribPointer(triColorAttributeLocation, size, type, normalize, stride, offset);
+
+  // VAO 1
+  // Create set of attributes
+  triVaos[1] = gl.createVertexArray();
+  gl.bindVertexArray(triVaos[1]);
+
+  // Create a buffer for the positons.
+  var triPositionBuffer1 = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, triPositionBuffer1);
+
+  // Set Geometry.
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triPositions), gl.DYNAMIC_DRAW);
+
+  // tell the position attribute how to pull data out of the current ARRAY_BUFFER
+  gl.enableVertexAttribArray(triPositionAttributeLocation);
+  var size = 2;
+  var type = gl.FLOAT;
+  var normalize = false;
+  var stride = 0;
+  var offset = 0;
+  gl.vertexAttribPointer(triPositionAttributeLocation, size, type, normalize, stride, offset);
+
+  // Create a buffer for the colors.
+  var triColorBuffer1 = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, triColorBuffer1);
+  // Set the colors.
+
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triColors), gl.DYNAMIC_DRAW);
+
+  // tell the color attribute how to pull data out of the current ARRAY_BUFFER
+  gl.enableVertexAttribArray(triColorAttributeLocation);
+  var size = 4;
+  var type = gl.FLOAT;
+  var normalize = false;
+  var stride = 0;
+  var offset = 0;
+  gl.vertexAttribPointer(triColorAttributeLocation, size, type, normalize, stride, offset);
+
+  // 
+
+  // Create and fill out a transform feedback
+  triTfs[0] = gl.createTransformFeedback();
+  gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, triTfs[0]);
+
+  // bind the buffers to the transform feedback
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, triPositionBuffer1);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, triColorBuffer1);
+
+  // Create and fill out a transform feedback
+  triTfs[1] = gl.createTransformFeedback();
+  gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, triTfs[1]);
+
+  // bind the buffers to the transform feedback
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, triPositionBuffer0);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, triColorBuffer0);
+
+  // unbind left over stuff
+
+  gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
 
 function setupSimilarityProgram() {
@@ -477,7 +565,7 @@ function renderTriangles() {
   gl.useProgram(triProgram);
 
   // Bind the attribute/buffer set we want.
-  gl.bindVertexArray(triVao);
+  gl.bindVertexArray(triVaos[triCurrent]);
 
   // fb
   gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
@@ -492,12 +580,21 @@ function renderTriangles() {
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   // draw
+
+  gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, triTfs[triCurrent]);
+  gl.beginTransformFeedback(gl.TRIANGLES);
+
   var primitiveType = gl.TRIANGLES;
   var offset = 0;
   var count = N_TRIANGLES;
   gl.drawArrays(primitiveType, offset, count);
 
+  gl.endTransformFeedback();
+  gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
+
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+  triCurrent = 1 - triCurrent;
 }
 
 function renderSimilarity() {
