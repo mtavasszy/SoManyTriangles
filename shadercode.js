@@ -89,14 +89,17 @@ out vec4 tf_color;
 out vec4 v_color;
 
 void main() {
-  bool isColRMut = (u_mutIndex == gl_VertexID && u_mutAttrType == 0) ? true : false; 
-  bool isColGMut = (u_mutIndex == gl_VertexID && u_mutAttrType == 1) ? true : false; 
-  bool isColBMut = (u_mutIndex == gl_VertexID && u_mutAttrType == 2) ? true : false; 
-  bool isColAMut = (u_mutIndex == gl_VertexID && u_mutAttrType == 3) ? true : false; 
+  int tri_i = gl_VertexID / 3;
+  int triMut_i = u_mutIndex / 3;
+
+  bool isColRMut = (triMut_i == tri_i && u_mutAttrType == 0) ? true : false; 
+  bool isColGMut = (triMut_i == tri_i && u_mutAttrType == 1) ? true : false; 
+  bool isColBMut = (triMut_i == tri_i && u_mutAttrType == 2) ? true : false; 
+  bool isColAMut = (triMut_i == tri_i && u_mutAttrType == 3) ? true : false; 
   bool isPosXMut = (u_mutIndex == gl_VertexID && u_mutAttrType == 4) ? true : false; 
   bool isPosYMut = (u_mutIndex == gl_VertexID && u_mutAttrType == 5) ? true : false; 
 
-  vec2 pos = vec2(isPosXMut ? u_mutNewVal : a_position.x, isPosYMut ? u_mutNewVal : a_position.y);
+  vec2 pos = vec2(isPosXMut ? u_mutNewVal * u_resolution.x : a_position.x, isPosYMut ? u_mutNewVal * u_resolution.y : a_position.y);
   vec4 col = vec4(isColRMut ? u_mutNewVal : a_color.r, isColGMut ? u_mutNewVal : a_color.g, isColBMut ? u_mutNewVal : a_color.b, isColAMut ? u_mutNewVal : a_color.a);
 
   // convert the position from pixels to clip space
