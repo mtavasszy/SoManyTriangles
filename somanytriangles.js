@@ -235,12 +235,9 @@ function setupTriProgram() {
 
   // random triangles
   var triPositions = [];
-  for (let i = 0; i < N_TRIANGLES * 3; i++) {
-    triPositions.push(Math.random() * IMAGE_W);  // random x
-    triPositions.push(Math.random() * IMAGE_H);  // random y
-  }
-
   var triColors = [];
+
+  //var z = 0;
   for (let i = 0; i < N_TRIANGLES; i++) {
     var r = Math.random();
     var g = Math.random();
@@ -248,6 +245,9 @@ function setupTriProgram() {
     var a = Math.random();
 
     for (let c = 0; c < 3; c++) {
+      triPositions.push(Math.random() * IMAGE_W);  // random x
+      triPositions.push(Math.random() * IMAGE_H);  // random y
+
       triColors.push(r);
       triColors.push(g);
       triColors.push(b);
