@@ -40,6 +40,9 @@ var copyMutPositionBuffer = 0;
 var copyMutColorBuffer = 0;
 var copyMutMutatedPositionBuffer = 0;
 var copyMutMutatedColorBuffer = 0;
+var copyMutMaxMipmapLvlLocation = 0;
+var copyMutSimilarityImageLocation = 0;
+var copyMutMaxSimilarityImageLocation = 0;
 
 // copy best similarity shader
 var copyBestCurrent = 0;
@@ -383,6 +386,10 @@ function setupCopyMutProgram() {
   var copyMutMutatedPositionAttributeLocation = gl.getAttribLocation(copyMutProgram, "a_mutated_position");
   var copyMutMutatedColorAttributeLocation = gl.getAttribLocation(copyMutProgram, "a_mutated_color");
 
+  // lookup uniforms
+  copyMutMaxMipmapLvlLocation = gl.getUniformLocation(copyMutProgram, "u_maxMipLvl");
+  copyMutSimilarityImageLocation = gl.getUniformLocation(copyMutProgram, "u_similarityImage");
+  copyMutMaxSimilarityImageLocation = gl.getUniformLocation(copyMutProgram, "u_maxSimilarityImage");
 
   // random triangles
   var triPositions = [];
@@ -716,6 +723,22 @@ function renderCopyMut() {
   // Bind the attribute/buffer set we want.
   gl.bindVertexArray(copyMutVao);
 
+  // Tell the shader to get the texture from texture unit 0
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, similarityTexture);
+
+  gl.generateMipmap(gl.TEXTURE_2D);
+
+  gl.uniform1i(copyMutSimilarityImageLocation, 0);
+
+  // Tell the shader to get the texture from texture unit 0
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture[1 - copyBestCurrent]);
+
+  gl.uniform1i(copyMutMaxSimilarityImageLocation, 1);
+
+  gl.uniform1f(copyMutMaxMipmapLvlLocation, similarityMaxMipLvl);
+
   // no need to call the fragment shader
   gl.enable(gl.RASTERIZER_DISCARD);
 
@@ -755,7 +778,7 @@ function renderCopyBest() {
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, similarityTexture);
 
-  gl.generateMipmap(gl.TEXTURE_2D);
+  //gl.generateMipmap(gl.TEXTURE_2D);
 
   gl.uniform1i(copyBestSimilarityImageLocation, 0);
 

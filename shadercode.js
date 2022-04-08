@@ -171,12 +171,21 @@ in vec4 a_color;
 in vec2 a_mutated_position;
 in vec4 a_mutated_color;
 
+uniform sampler2D u_similarityImage;
+uniform sampler2D u_maxSimilarityImage;
+uniform float u_maxMipLvl;
+
 out vec2 tf_position;
 out vec4 tf_color;
 
 void main() {
-  tf_position = a_mutated_position + a_position * 0.0000001f;
-  tf_color = a_mutated_color + a_color * 0.000001f;
+  float mutatedSimilarity = textureLod(u_similarityImage, vec2(0.5f, 0.5f), u_maxMipLvl).x;
+  float bestSimilarity = texture(u_maxSimilarityImage, vec2(0.5f, 0.5f)).x;
+
+  bool isBetter = mutatedSimilarity > bestSimilarity;
+
+  tf_position = isBetter ? a_mutated_position : a_position;
+  tf_color = isBetter ? a_mutated_color : a_color;
 }
 `;
 
