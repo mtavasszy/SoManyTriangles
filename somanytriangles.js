@@ -38,6 +38,8 @@ var copyMutTf = 0;
 var copyMutFbo = 0;
 var copyMutPositionBuffer = 0;
 var copyMutColorBuffer = 0;
+var copyMutMutatedPositionBuffer = 0;
+var copyMutMutatedColorBuffer = 0;
 
 // copy best similarity shader
 var copyBestCurrent = 0;
@@ -230,7 +232,7 @@ function createProgram(gl, shaderSources, transformFeedbackVaryings) {
 }
 
 function setupTriProgram() {
-  triProgram = createProgram(gl, [renderTriVertSource, renderTriFragSource], ['tf_position', 'tf_color']);
+  triProgram = createProgram(gl, [renderTriVertSource, renderTriFragSource], ['tf_position', 'tf_color','tf_mutated_position', 'tf_mutated_color']);
 
   // look up where the vertex data needs to go.
   var triPositionAttributeLocation = gl.getAttribLocation(triProgram, "a_position");
@@ -378,6 +380,9 @@ function setupCopyMutProgram() {
   // look up where the vertex data needs to go.
   var copyMutPositionAttributeLocation = gl.getAttribLocation(copyMutProgram, "a_position");
   var copyMutColorAttributeLocation = gl.getAttribLocation(copyMutProgram, "a_color");
+  var copyMutMutatedPositionAttributeLocation = gl.getAttribLocation(copyMutProgram, "a_mutated_position");
+  var copyMutMutatedColorAttributeLocation = gl.getAttribLocation(copyMutProgram, "a_mutated_color");
+
 
   // random triangles
   var triPositions = [];
@@ -432,6 +437,38 @@ function setupCopyMutProgram() {
   var stride = 0;
   var offset = 0;
   gl.vertexAttribPointer(copyMutColorAttributeLocation, size, type, normalize, stride, offset);
+
+  // Create a buffer for the positons.
+  copyMutMutatedPositionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, copyMutMutatedPositionBuffer);
+
+  // Set Geometry.
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triPositions), gl.DYNAMIC_DRAW);
+
+  // tell the position attribute how to pull data out of the current ARRAY_BUFFER
+  gl.enableVertexAttribArray(copyMutMutatedPositionAttributeLocation);
+  var size = 2;
+  var type = gl.FLOAT;
+  var normalize = false;
+  var stride = 0;
+  var offset = 0;
+  gl.vertexAttribPointer(copyMutMutatedPositionAttributeLocation, size, type, normalize, stride, offset);
+
+  // Create a buffer for the colors.
+  copyMutMutatedColorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, copyMutMutatedColorBuffer);
+  // Set the colors.
+
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triColors), gl.DYNAMIC_DRAW);
+
+  // tell the color attribute how to pull data out of the current ARRAY_BUFFER
+  gl.enableVertexAttribArray(copyMutMutatedColorAttributeLocation);
+  var size = 4;
+  var type = gl.FLOAT;
+  var normalize = false;
+  var stride = 0;
+  var offset = 0;
+  gl.vertexAttribPointer(copyMutMutatedColorAttributeLocation, size, type, normalize, stride, offset);
 }
 
 function setupCopyBestProgram() {
@@ -579,6 +616,8 @@ function setupTransformFeedback() {
   // bind the buffers to the transform feedback
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, copyMutPositionBuffer);
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, copyMutColorBuffer);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 2, copyMutMutatedPositionBuffer);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 3, copyMutMutatedColorBuffer);
 
   // Create and fill out a transform feedback
   copyMutTf = gl.createTransformFeedback();

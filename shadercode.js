@@ -85,6 +85,8 @@ uniform float u_mutNewVal;
 
 out vec2 tf_position;
 out vec4 tf_color;
+out vec2 tf_mutated_position;
+out vec4 tf_mutated_color;
 
 out vec4 v_color;
 
@@ -108,8 +110,10 @@ void main() {
   gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
   v_color = col;
 
-  tf_position = pos;
-  tf_color = col;
+  tf_position = a_position;
+  tf_color = a_color;
+  tf_mutated_position = pos;
+  tf_mutated_color = col;
 }
 `;
 
@@ -164,13 +168,15 @@ void main() {
 var copyMutationVertSource = `#version 300 es
 in vec2 a_position;
 in vec4 a_color;
+in vec2 a_mutated_position;
+in vec4 a_mutated_color;
 
 out vec2 tf_position;
 out vec4 tf_color;
 
 void main() {
-  tf_position = a_position;
-  tf_color = a_color;
+  tf_position = a_mutated_position + a_position * 0.0000001f;
+  tf_color = a_mutated_color + a_color * 0.000001f;
 }
 `;
 
