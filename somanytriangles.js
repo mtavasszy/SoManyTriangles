@@ -235,7 +235,7 @@ function createProgram(gl, shaderSources, transformFeedbackVaryings) {
 }
 
 function setupTriProgram() {
-  triProgram = createProgram(gl, [renderTriVertSource, renderTriFragSource], ['tf_position', 'tf_color','tf_mutated_position', 'tf_mutated_color']);
+  triProgram = createProgram(gl, [renderTriVertSource, renderTriFragSource], ['tf_position', 'tf_color', 'tf_mutated_position', 'tf_mutated_color']);
 
   // look up where the vertex data needs to go.
   var triPositionAttributeLocation = gl.getAttribLocation(triProgram, "a_position");
@@ -805,18 +805,18 @@ function renderCopyBest() {
   copyBestCurrent = 1 - copyBestCurrent;
 
 
-  gl.readBuffer(gl.COLOR_ATTACHMENT0);
+    // gl.readBuffer(gl.COLOR_ATTACHMENT0);
 
-  const data = new Float32Array(4);
-  gl.readPixels(
-    0,            // x
-    0,            // y
-    1,                 // width
-    1,                 // height
-    gl.RGBA,           // format
-    gl.FLOAT,  // type
-    data);             // typed array to hold result
-  console.log(data[0]);
+    // const data = new Float32Array(4);
+    // gl.readPixels(
+    //   0,            // x
+    //   0,            // y
+    //   1,                 // width
+    //   1,                 // height
+    //   gl.RGBA,           // format
+    //   gl.FLOAT,  // type
+    //   data);             // typed array to hold result
+    // console.log(data[0]);
 
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -896,12 +896,18 @@ function render() {
 }
 
 function renderLoop() {
-  renderTriangles();
-  renderSimilarity();
-  renderCopyMut();
-  renderCopyBest();
-  renderToCanvas();
+  for (var i = 0; i < 100; i++) {
+    renderTriangles();
+    renderSimilarity();
+    renderCopyMut();
+    renderCopyBest();
 
+    gl.flush();
+  }
+  
+  console.log("100 changes done");
+  
+  renderToCanvas();
   requestAnimationFrame(renderLoop);
 }
 
