@@ -160,3 +160,22 @@ void main() {
   outColor = vec4(maxVal,0,0,1);
 }
 `;
+
+var copyMutationVertSource = `#version 300 es
+in vec2 a_position;
+in vec4 a_color;
+
+out vec2 tf_position;
+out vec4 tf_color;
+
+void main() {
+  tf_position = a_position;
+  tf_color = a_color;
+}
+`;
+
+var copyMutationFragSource = `#version 300 es
+precision highp float;
+void main() {
+}
+`;
