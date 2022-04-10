@@ -9,9 +9,17 @@ var N_TRIANGLES = 50;
 
 var canvas = 0;
 var gl = 0;
-var animationFrame = 0;
 
-// triangle  shader
+var totalIterations = 0;
+
+var animationFrame = 0;
+var iterationsPerFrame = 100;
+var animationFramePrevTime = 0;
+var elapsedIterations = 0;
+var ipsElem = 0;
+var totalItElem = 0;
+
+// triangle shader
 var triProgram = 0;
 var triVao = 0;
 var triTf = 0;
@@ -99,6 +107,10 @@ function updateImageInfo() {
   canvas.height = IMAGE_H;
 
   similarityMaxMipLvl = Math.floor(Math.log2(Math.max(IMAGE_W, IMAGE_H)));
+
+  ipsElem = document.querySelector("#iterations_per_sec");
+  totalItElem = document.querySelector("#total_iterations");
+
 }
 
 function setupTextures() {
@@ -651,7 +663,7 @@ function renderTriangles() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
 
   gl.clearColor(0.0, 0.0, 0.0, 0.0);
-  gl.clear(gl.COLOR_BUFFER_BIT);  
+  gl.clear(gl.COLOR_BUFFER_BIT);
 
   var triMutIndex = Math.floor(Math.random() * N_TRIANGLES * 3);
   var triMutType = Math.floor(Math.random() * 6);
@@ -877,18 +889,15 @@ function render() {
   requestAnimationFrame(renderLoop)
 }
 
-function renderLoop() {
-  for (var i = 0; i < 100; i++) {
+function renderLoop(now) {
+  for (var i = 0; i < iterationsPerFrame; i++) {
     renderTriangles();
     renderSimilarity();
     renderCopyMut();
     renderCopyBest();
-
-    gl.flush();
+    
+    //gl.flush();
   }
-  
-  console.log("100 changes done");
-  
   gl.bindFramebuffer(gl.FRAMEBUFFER, copyBestFbo[copyBestCurrent]);
 
   gl.readBuffer(gl.COLOR_ATTACHMENT0);
@@ -908,11 +917,34 @@ function renderLoop() {
 
 
   renderToCanvas();
+
+  updateTotalIterationsText();
+  updateIPS(now);
+
   animationFrame = requestAnimationFrame(renderLoop);
 }
 
 function stopRender() {
   cancelAnimationFrame(animationFrame);
+}
+
+function updateIPS(now) {
+  var deltaTime = now - animationFramePrevTime;
+  elapsedIterations += iterationsPerFrame;
+
+  if (deltaTime > 1000) {
+    animationFramePrevTime = now;
+
+    var ipsText = parseInt( elapsedIterations / (deltaTime*0.001) ) + " iterations/s";
+    elapsedIterations = 0;
+
+    ipsElem.textContent = ipsText;
+  }
+}
+
+function updateTotalIterationsText() {
+  totalIterations += iterationsPerFrame;
+  totalItElem.textContent = totalIterations + " total iterations";
 }
 
 function setRectangle(gl, x, y, width, height) {
