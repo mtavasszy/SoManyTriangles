@@ -13,7 +13,7 @@ var gl = 0;
 var totalIterations = 0;
 
 var animationFrame = 0;
-var iterationsPerFrame = 100;
+var iterationsPerFrame = 10;
 var animationFramePrevTime = 0;
 var elapsedIterations = 0;
 var ipsElem = 0;
@@ -682,7 +682,7 @@ function renderTriangles() {
 
   var primitiveType = gl.TRIANGLES;
   var offset = 0;
-  var count = N_TRIANGLES;
+  var count = N_TRIANGLES * 3;
   gl.drawArrays(primitiveType, offset, count);
 
   gl.endTransformFeedback();
@@ -765,7 +765,7 @@ function renderCopyMut() {
 
   var primitiveType = gl.TRIANGLES;
   var offset = 0;
-  var count = N_TRIANGLES;
+  var count = N_TRIANGLES * 3;
   gl.drawArrays(primitiveType, offset, count);
 
   gl.endTransformFeedback();
@@ -855,8 +855,8 @@ function renderToCanvas() {
 function render() {
   // Get A WebGL context
   gl = canvas.getContext("webgl2", {
-    antialias: false,
-    alpha: false,
+    //antialias: false,
+    //alpha: false,
     premultipliedAlpha: false  // Ask for non-premultiplied alpha
   });
   if (!gl) {
@@ -864,10 +864,10 @@ function render() {
     return;
   }
 
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  gl.clearColor(0.0, 0.0, 0.0, 0.0);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.disable(gl.DEPTH_TEST);
+  //gl.disable(gl.DEPTH_TEST);
 
   if (!gl.getExtension("EXT_color_buffer_float")) {
     console.error("EXT_color_buffer_float not available");

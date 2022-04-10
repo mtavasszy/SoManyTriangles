@@ -68,6 +68,8 @@ void main() {
 
   vec3 diff = abs(targetCol.xyz * targetCol.w - triangleCol.xyz * triangleCol.w);
 
+  //diff = diff*diff;
+
   float similarity = 1.0 - (diff.x + diff.y + diff.z) * 0.3333; 
 
   outColor = vec4(similarity, 0.0, 0.0, 1.0);
