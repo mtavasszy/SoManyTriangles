@@ -70,7 +70,7 @@ void main() {
 
   float similarity = 1.0 - (diff.x + diff.y + diff.z) * 0.3333; 
 
-  outColor = vec4(vec3(similarity), 1.0);
+  outColor = vec4(similarity, 0.0, 0.0, 1.0);
 }
 `;
 
@@ -160,8 +160,8 @@ in vec2 v_texCoord;
 out vec4 outColor;
 
 void main() {
-  float maxVal = max(textureLod(u_similarityImage, v_texCoord, u_maxMipLvl).x, texture(u_maxSimilarityImage, v_texCoord).x);
-  outColor = vec4(maxVal,0,0,1);
+  float maxVal = max(textureLod(u_similarityImage, vec2(0.5f, 0.5f), u_maxMipLvl).x, texture(u_maxSimilarityImage, vec2(0.5f, 0.5f)).x);
+  outColor = vec4(maxVal, 0.0, 0.0, 1.0);
 }
 `;
 

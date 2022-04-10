@@ -9,6 +9,7 @@ var N_TRIANGLES = 50;
 
 var canvas = 0;
 var gl = 0;
+var animationFrame = 0;
 
 // triangle  shader
 var triProgram = 0;
@@ -35,7 +36,6 @@ var similarityMaxMipLvl = 0;
 var copyMutProgram = 0;
 var copyMutVao = 0;
 var copyMutTf = 0;
-var copyMutFbo = 0;
 var copyMutPositionBuffer = 0;
 var copyMutColorBuffer = 0;
 var copyMutMutatedPositionBuffer = 0;
@@ -649,15 +649,19 @@ function renderTriangles() {
 
   // fb
   gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
-  gl.uniform2f(triResolutionUniformLocation, IMAGE_W, IMAGE_H);
-  gl.uniform1i(triMutIndexUniformLocation, Math.floor(Math.random() * N_TRIANGLES * 3));
-  gl.uniform1i(triMutTypeUniformLocation, Math.floor(Math.random() * 6));
-  gl.uniform1f(triMutNewValUniformLocation, Math.random());
-  gl.viewport(0, 0, IMAGE_W, IMAGE_H);
 
-  // Clear the canvas
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.clearColor(0.0, 0.0, 0.0, 0.0);
+  gl.clear(gl.COLOR_BUFFER_BIT);  
+
+  var triMutIndex = Math.floor(Math.random() * N_TRIANGLES * 3);
+  var triMutType = Math.floor(Math.random() * 6);
+  var triMutNewVal = Math.random();
+
+  gl.uniform2f(triResolutionUniformLocation, IMAGE_W, IMAGE_H);
+  gl.uniform1i(triMutIndexUniformLocation, triMutIndex);
+  gl.uniform1i(triMutTypeUniformLocation, triMutType);
+  gl.uniform1f(triMutNewValUniformLocation, triMutNewVal);
+  gl.viewport(0, 0, IMAGE_W, IMAGE_H);
 
   // draw
 
@@ -681,7 +685,7 @@ function renderSimilarity() {
   gl.viewport(0, 0, IMAGE_W, IMAGE_H);
 
   // Clear the canvas
-  gl.clearColor(0, 0, 0, 0);
+  gl.clearColor(0.0, 0.0, 0.0, 0.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Tell it to use our program (pair of shaders)
@@ -717,6 +721,8 @@ function renderSimilarity() {
 }
 
 function renderCopyMut() {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
   // Tell it to use our program (pair of shaders)
   gl.useProgram(copyMutProgram);
 
@@ -755,8 +761,6 @@ function renderCopyMut() {
 
   // turn on using fragment shaders again
   gl.disable(gl.RASTERIZER_DISCARD);
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
 function renderCopyBest() {
@@ -766,7 +770,7 @@ function renderCopyBest() {
 
   // Clear the canvas
   gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.clear(gl.COLOR_BUFFER_BIT);
 
   // Tell it to use our program (pair of shaders)
   gl.useProgram(copyBestProgram);
@@ -804,21 +808,6 @@ function renderCopyBest() {
 
   copyBestCurrent = 1 - copyBestCurrent;
 
-
-    // gl.readBuffer(gl.COLOR_ATTACHMENT0);
-
-    // const data = new Float32Array(4);
-    // gl.readPixels(
-    //   0,            // x
-    //   0,            // y
-    //   1,                 // width
-    //   1,                 // height
-    //   gl.RGBA,           // format
-    //   gl.FLOAT,  // type
-    //   data);             // typed array to hold result
-    // console.log(data[0]);
-
-
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
@@ -828,8 +817,8 @@ function renderToCanvas() {
   gl.viewport(0, 0, IMAGE_W, IMAGE_H);
 
   // Clear the canvas
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.clearColor(0.0, 0.0, 0.0, 0.0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
 
   // Tell it to use our program (pair of shaders)
   gl.useProgram(rtcProgram);
@@ -837,19 +826,12 @@ function renderToCanvas() {
   // Bind the attribute/buffer set we want.
   gl.bindVertexArray(rtcVao);
 
-
   // Tell the shader to get the texture from texture unit 0
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
   gl.uniform1i(rtcImageLocation, 0);
-
-  //gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.uniform2f(rtcResolutionLocation, IMAGE_W, IMAGE_H);
   gl.viewport(0, 0, IMAGE_W, IMAGE_H);
-
-  // Clear the canvas
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Draw the rectangle.
   var primitiveType = gl.TRIANGLES;
@@ -907,8 +889,30 @@ function renderLoop() {
   
   console.log("100 changes done");
   
+  gl.bindFramebuffer(gl.FRAMEBUFFER, copyBestFbo[copyBestCurrent]);
+
+  gl.readBuffer(gl.COLOR_ATTACHMENT0);
+
+  const data = new Float32Array(4);
+  gl.readPixels(
+    0,            // x
+    0,            // y
+    1,                 // width
+    1,                 // height
+    gl.RGBA,           // format
+    gl.FLOAT,  // type
+    data);             // typed array to hold result
+  console.log(data[0]);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+
   renderToCanvas();
-  requestAnimationFrame(renderLoop);
+  animationFrame = requestAnimationFrame(renderLoop);
+}
+
+function stopRender() {
+  cancelAnimationFrame(animationFrame);
 }
 
 function setRectangle(gl, x, y, width, height) {
