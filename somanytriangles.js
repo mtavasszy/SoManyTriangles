@@ -13,7 +13,7 @@ var gl = 0;
 var totalIterations = 0;
 
 var animationFrame = 0;
-var iterationsPerFrame = 10;
+var iterationsPerFrame = 1;
 var animationFramePrevTime = 0;
 var elapsedIterations = 0;
 var ipsElem = 0;
@@ -38,7 +38,15 @@ var similarityFbo = 0;
 var similarityTriangleImageLocation = 0;
 var similarityTargetImageLocation = 0;
 var similarityResolutionLocation = 0;
-var similarityMaxMipLvl = 0;
+
+// sum similarity shader
+var sumSimilarityProgram = 0;
+var sumSimilarityVao = [];
+var sumSimilarityFbo = [];
+var sumSimilaritySrcImageLocation = 0;
+var sumSimilaritySrcResolutionLocation = 0;
+var sumSimilarityDstResolutionLocation = 0;
+var sumSimilarityMaxLvl = 0;
 
 // copy mutation shader
 var copyMutProgram = 0;
@@ -72,8 +80,10 @@ var rtcResolutionLocation = 0;
 var triangleTexture = 0;
 var targetImgTexture = 0;
 var similarityTexture = 0;
+var sumSimilarityTexture = [];
 var bestSimilarityTexture = [];
 
+var prevbest = 0;
 
 // // 
 
@@ -106,7 +116,11 @@ function updateImageInfo() {
   canvas.width = IMAGE_W;
   canvas.height = IMAGE_H;
 
-  similarityMaxMipLvl = Math.floor(Math.log2(Math.max(IMAGE_W, IMAGE_H)));
+  function log4(x) {
+    return Math.log10(x) / Math.log10(4);
+  }
+
+  sumSimilarityMaxLvl = Math.ceil(log4(Math.max(IMAGE_W, IMAGE_H))); // CEIL NOT FLOOR
 
   ipsElem = document.querySelector("#iterations_per_sec");
   totalItElem = document.querySelector("#total_iterations");
@@ -143,7 +157,7 @@ function setupTextures() {
 
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, IMAGE_W, IMAGE_H, 0, gl.RED, gl.FLOAT, null);
@@ -169,6 +183,27 @@ function setupTextures() {
 
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, 1, 1, 0, gl.RED, gl.FLOAT, new Float32Array([0]));
 
+  //
+
+  var resX = Math.ceil(IMAGE_W / 4);
+  var resY = Math.ceil(IMAGE_H / 4);
+
+  for (var i = 0; i < sumSimilarityMaxLvl; i++) {
+    sumSimilarityTexture[i] = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, sumSimilarityTexture[i]);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, resX, resY, 0, gl.RED, gl.FLOAT, null);
+
+    var resX = Math.ceil(resX / 4);
+    var resY = Math.ceil(resY / 4);
+  }
+
+
   gl.bindTexture(gl.TEXTURE_2D, null);
 }
 
@@ -192,6 +227,19 @@ function setupFrameBuffers() {
   var attachmentPoint = gl.COLOR_ATTACHMENT0;
   var mipLevel = 0;               // the largest mip
   gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, similarityTexture, mipLevel);
+
+  //
+
+  for (var i = 0; i < sumSimilarityMaxLvl; i++) {
+    // Create a framebuffer
+    sumSimilarityFbo[i] = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, sumSimilarityFbo[i]);
+
+    // Attach a texture to it.
+    var attachmentPoint = gl.COLOR_ATTACHMENT0;
+    var mipLevel = 0;               // the largest mip
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, sumSimilarityTexture[i], mipLevel);
+  }
 
   //
 
@@ -389,6 +437,82 @@ function setupSimilarityProgram() {
   setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
 }
 
+function setupSumSimilarityProgram() {
+  // setup GLSL program
+  sumSimilarityProgram = webglUtils.createProgramFromSources(gl, [sumSimilarityVertSource, sumSimilarityFragSource]);
+
+  // look up where the vertex data needs to go.
+  var sumSimilarityPositionAttributeLocation = gl.getAttribLocation(sumSimilarityProgram, "a_position");
+  var sumSimilarityTexCoordAttributeLocation = gl.getAttribLocation(sumSimilarityProgram, "a_texCoord");
+
+  // lookup uniforms
+  sumSimilaritySrcResolutionLocation = gl.getUniformLocation(sumSimilarityProgram, "u_srcResolution");
+  sumSimilarityDstResolutionLocation = gl.getUniformLocation(sumSimilarityProgram, "u_dstResolution");
+  sumSimilaritySrcImageLocation = gl.getUniformLocation(sumSimilarityProgram, "u_srcImage");
+
+  var resX = IMAGE_W;
+  var resY = IMAGE_H;
+
+  for (var i = 0; i < sumSimilarityMaxLvl; i++) {
+    // Create a vertex array object (attribute state)
+    sumSimilarityVao[i] = gl.createVertexArray();
+
+    // and make it the one we're currently working with
+    gl.bindVertexArray(sumSimilarityVao[i]);
+
+    // Create a buffer and put a single pixel space rectangle in
+    // it (2 triangles)
+    var sumSimilarityPositionBuffer = gl.createBuffer();
+
+    // Turn on the attribute
+    gl.enableVertexAttribArray(sumSimilarityPositionAttributeLocation);
+
+    // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, sumSimilarityPositionBuffer);
+
+    // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
+    var size = 2;          // 2 components per iteration
+    var type = gl.FLOAT;   // the data is 32bit floats
+    var normalize = false; // don't normalize the data
+    var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+    var offset = 0;        // start at the beginning of the buffer
+    gl.vertexAttribPointer(sumSimilarityPositionAttributeLocation, size, type, normalize, stride, offset);
+
+    // provide texture coordinates for the rectangle.
+    var sumSimilarityTexCoordBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, sumSimilarityTexCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      0.0, 0.0,
+      1.0, 0.0,
+      0.0, 1.0,
+      0.0, 1.0,
+      1.0, 0.0,
+      1.0, 1.0,
+    ]), gl.STATIC_DRAW);
+
+    // Turn on the attribute
+    gl.enableVertexAttribArray(sumSimilarityTexCoordAttributeLocation);
+
+    // Tell the attribute how to get data out of texCoordBuffer (ARRAY_BUFFER)
+    var size = 2;          // 2 components per iteration
+    var type = gl.FLOAT;   // the data is 32bit floats
+    var normalize = false; // don't normalize the data
+    var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+    var offset = 0;        // start at the beginning of the buffer
+    gl.vertexAttribPointer(sumSimilarityTexCoordAttributeLocation, size, type, normalize, stride, offset);
+
+    // Bind the position buffer so gl.bufferData that will be called
+    // in setRectangle puts data in the position buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, sumSimilarityPositionBuffer);
+
+    resX = Math.ceil(resX / 4);
+    resY = Math.ceil(resY / 4);
+
+    // Set a rectangle the same size as the image.
+    setRectangle(gl, 0, 0, resX, resY);
+  }
+}
+
 function setupCopyMutProgram() {
   copyMutProgram = createProgram(gl, [copyMutationVertSource, copyMutationFragSource], ['tf_position', 'tf_color']);
 
@@ -399,7 +523,6 @@ function setupCopyMutProgram() {
   var copyMutMutatedColorAttributeLocation = gl.getAttribLocation(copyMutProgram, "a_mutated_color");
 
   // lookup uniforms
-  copyMutMaxMipmapLvlLocation = gl.getUniformLocation(copyMutProgram, "u_maxMipLvl");
   copyMutSimilarityImageLocation = gl.getUniformLocation(copyMutProgram, "u_similarityImage");
   copyMutMaxSimilarityImageLocation = gl.getUniformLocation(copyMutProgram, "u_maxSimilarityImage");
 
@@ -500,7 +623,6 @@ function setupCopyBestProgram() {
 
   // lookup uniforms
   copyBestResolutionLocation = gl.getUniformLocation(copyBestProgram, "u_resolution");
-  copyBestMaxMipmapLvlLocation = gl.getUniformLocation(copyBestProgram, "u_maxMipLvl");
   copyBestSimilarityImageLocation = gl.getUniformLocation(copyBestProgram, "u_similarityImage");
   copyBestMaxSimilarityImageLocation = gl.getUniformLocation(copyBestProgram, "u_maxSimilarityImage");
 
@@ -729,6 +851,119 @@ function renderSimilarity() {
   var count = 6;
   gl.drawArrays(primitiveType, offset, count);
 
+
+
+
+  // gl.readBuffer(gl.COLOR_ATTACHMENT0);
+
+  // const data = new Float32Array(IMAGE_W * IMAGE_H * 4);
+  // gl.readPixels(
+  //   0,            // x
+  //   0,            // y
+  //   IMAGE_W,                 // width
+  //   IMAGE_H,                 // height
+  //   gl.RGBA,           // format
+  //   gl.FLOAT,  // type
+  //   data);             // typed array to hold result
+
+  // var sum = 0;
+  // for (var i = 0; i < IMAGE_W * IMAGE_H; i++) {
+  //   sum += data[i * 4];
+  // }
+
+  // console.log("cpu: " + sum);
+
+
+
+
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+
+function renderSumSimilarity() {
+  var resX = IMAGE_W;
+  var resY = IMAGE_H;
+
+  // console.log("imw: " + resX + ", imh: " + resY);
+
+
+  for (var i = 0; i < sumSimilarityMaxLvl; i++) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, sumSimilarityFbo[i]);
+
+    // Tell it to use our program (pair of shaders)
+    gl.useProgram(sumSimilarityProgram);
+
+    // Bind the attribute/buffer set we want.
+    gl.bindVertexArray(sumSimilarityVao[i]);
+
+    // Tell the shader to get the texture from texture unit 0
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, (i == 0) ? similarityTexture : sumSimilarityTexture[i - 1]);
+
+    gl.uniform1i(sumSimilaritySrcImageLocation, 0);
+
+    gl.uniform2f(sumSimilaritySrcResolutionLocation, resX, resY);
+
+    resX = Math.ceil(resX / 4);
+    resY = Math.ceil(resY / 4);
+
+    gl.uniform2f(sumSimilarityDstResolutionLocation, resX, resY);
+
+    gl.viewport(0, 0, resX, resY);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Draw the rectangle.
+    var primitiveType = gl.TRIANGLES;
+    var offset = 0;
+    var count = 6;
+    gl.drawArrays(primitiveType, offset, count);
+
+    // gl.readBuffer(gl.COLOR_ATTACHMENT0);
+
+    // const data = new Float32Array(4 * resX * resY);
+    // gl.readPixels(
+    //   0,            // x
+    //   0,            // y
+    //   resX,                 // width
+    //   resY,                 // height
+    //   gl.RGBA,           // format
+    //   gl.FLOAT,  // type
+    //   data);             // typed array to hold result
+
+    // var sum = 0.0;
+
+    // for (var j = 0; j < resX * resY; j++) {
+    //   sum += data[j * 4];
+    // }
+
+    // console.log("x: " + resX + ", y: " + resY);
+    // console.log("sumsim sum: " + sum);
+  }
+
+  gl.readBuffer(gl.COLOR_ATTACHMENT0);
+
+  const data = new Float32Array(4);
+  gl.readPixels(
+    0,            // x
+    0,            // y
+    1,                 // width
+    1,                 // height
+    gl.RGBA,           // format
+    gl.FLOAT,  // type
+    data);             // typed array to hold result
+
+
+  console.log("sumsim sum: " + data[0]);
+  if (prevbest > data[0]) {
+    console.log("HO!");
+    while (true) { }
+  }
+  prevbest = data[0];
+
+
+
+  
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
@@ -743,9 +978,7 @@ function renderCopyMut() {
 
   // Tell the shader to get the texture from texture unit 0
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, similarityTexture);
-
-  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.bindTexture(gl.TEXTURE_2D, sumSimilarityTexture[sumSimilarityMaxLvl - 1]);
 
   gl.uniform1i(copyMutSimilarityImageLocation, 0);
 
@@ -754,8 +987,6 @@ function renderCopyMut() {
   gl.bindTexture(gl.TEXTURE_2D, bestSimilarityTexture[1 - copyBestCurrent]);
 
   gl.uniform1i(copyMutMaxSimilarityImageLocation, 1);
-
-  gl.uniform1f(copyMutMaxMipmapLvlLocation, similarityMaxMipLvl);
 
   // no need to call the fragment shader
   gl.enable(gl.RASTERIZER_DISCARD);
@@ -792,9 +1023,7 @@ function renderCopyBest() {
 
   // Tell the shader to get the texture from texture unit 0
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, similarityTexture);
-
-  //gl.generateMipmap(gl.TEXTURE_2D);
+  gl.bindTexture(gl.TEXTURE_2D, sumSimilarityTexture[sumSimilarityMaxLvl - 1]);
 
   gl.uniform1i(copyBestSimilarityImageLocation, 0);
 
@@ -804,7 +1033,6 @@ function renderCopyBest() {
 
   gl.uniform1i(copyBestMaxSimilarityImageLocation, 1);
 
-  gl.uniform1f(copyBestMaxMipmapLvlLocation, similarityMaxMipLvl);
   gl.uniform2f(copyBestResolutionLocation, 1, 1);
   gl.viewport(0, 0, 1, 1);
 
@@ -881,6 +1109,7 @@ function render() {
 
   setupTriProgram();
   setupSimilarityProgram();
+  setupSumSimilarityProgram();
   setupCopyMutProgram();
   setupCopyBestProgram();
   setupRenderToCanvasProgram();
@@ -893,33 +1122,21 @@ function renderLoop(now) {
   for (var i = 0; i < iterationsPerFrame; i++) {
     renderTriangles();
     renderSimilarity();
+    renderSumSimilarity();
     renderCopyMut();
     renderCopyBest();
-    
+
     //gl.flush();
   }
-  gl.bindFramebuffer(gl.FRAMEBUFFER, copyBestFbo[copyBestCurrent]);
-
-  gl.readBuffer(gl.COLOR_ATTACHMENT0);
-
-  const data = new Float32Array(4);
-  gl.readPixels(
-    0,            // x
-    0,            // y
-    1,                 // width
-    1,                 // height
-    gl.RGBA,           // format
-    gl.FLOAT,  // type
-    data);             // typed array to hold result
-  console.log(data[0]);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
 
   renderToCanvas();
 
   updateTotalIterationsText();
   updateIPS(now);
+
+  //return;
 
   animationFrame = requestAnimationFrame(renderLoop);
 }
@@ -935,7 +1152,7 @@ function updateIPS(now) {
   if (deltaTime > 1000) {
     animationFramePrevTime = now;
 
-    var ipsText = parseInt( elapsedIterations / (deltaTime*0.001) ) + " iterations/s";
+    var ipsText = parseInt(elapsedIterations / (deltaTime * 0.001)) + " iterations/s";
     elapsedIterations = 0;
 
     ipsElem.textContent = ipsText;

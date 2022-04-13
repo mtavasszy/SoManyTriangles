@@ -29,7 +29,59 @@ in vec2 v_texCoord;
 out vec4 outColor;
 
 void main() {
-  outColor = texture(u_image, v_texCoord);
+  outColor = texture(u_image, v_texCoord);// / vec4(vec3(4*4*4*4), 1.0);
+}
+`;
+
+var sumSimilarityVertSource = `#version 300 es
+in vec2 a_position;
+in vec2 a_texCoord;
+
+uniform vec2 u_dstResolution;
+
+out vec2 v_texCoord;
+
+void main() {
+
+  // convert the position from pixels to clip space
+  vec2 clipSpace = (a_position / u_dstResolution) * 2.0 - 1.0;
+
+  gl_Position = vec4(clipSpace, 0, 1);
+
+  v_texCoord = a_texCoord;
+}
+`;
+
+var sumSimilarityFragSource = `#version 300 es
+precision highp float;
+
+uniform sampler2D u_srcImage;
+uniform vec2 u_srcResolution;
+uniform vec2 u_dstResolution;
+
+in vec2 v_texCoord;
+
+out vec4 outColor;
+
+void main() {
+
+  vec2 step = 1.0 / u_srcResolution;
+  vec2 imageTexCoord = ((((v_texCoord * u_dstResolution) - vec2(0.5))* 4.0)+ vec2(0.5)) / u_srcResolution;
+
+  float sum = 0.0;
+  
+  for (int x = 0; x < 4; x++) {
+    for (int y = 0; y < 4; y++) {
+      vec2 coord = imageTexCoord + (step * vec2(x , y));
+      if (coord.x > 0.0 && coord.x < 1.0 && coord.y > 0.0 && coord.y < 1.0) {
+        sum += texture(u_srcImage, coord).x;
+      }
+    }
+  }
+
+  //outColor = texture(u_srcImage, v_texCoord);
+  outColor = vec4(sum, 0.0, 0.0, 1.0);
+  //outColor = vec4(v_texCoord.x * v_texCoord.y, 0.0, 0.0, 1.0);
 }
 `;
 
@@ -44,7 +96,7 @@ out vec2 v_texCoord;
 void main() {
 
   // convert the position from pixels to clip space
-  vec2 clipSpace = (a_position / u_resolution) * 2.0 -1.0;
+  vec2 clipSpace = (a_position / u_resolution) * 2.0 - 1.0;
 
   gl_Position = vec4(clipSpace, 0, 1);
 
@@ -155,14 +207,13 @@ precision highp float;
 
 uniform sampler2D u_similarityImage;
 uniform sampler2D u_maxSimilarityImage;
-uniform float u_maxMipLvl;
 
 in vec2 v_texCoord;
 
 out vec4 outColor;
 
 void main() {
-  float maxVal = max(textureLod(u_similarityImage, vec2(0.5f, 0.5f), u_maxMipLvl).x, texture(u_maxSimilarityImage, vec2(0.5f, 0.5f)).x);
+  float maxVal = max(texture(u_similarityImage, vec2(0.5f, 0.5f)).x, texture(u_maxSimilarityImage, vec2(0.5f, 0.5f)).x);
   outColor = vec4(maxVal, 0.0, 0.0, 1.0);
 }
 `;
@@ -175,13 +226,12 @@ in vec4 a_mutated_color;
 
 uniform sampler2D u_similarityImage;
 uniform sampler2D u_maxSimilarityImage;
-uniform float u_maxMipLvl;
 
 out vec2 tf_position;
 out vec4 tf_color;
 
 void main() {
-  float mutatedSimilarity = textureLod(u_similarityImage, vec2(0.5f, 0.5f), u_maxMipLvl).x;
+  float mutatedSimilarity = texture(u_similarityImage, vec2(0.5f, 0.5f)).x;
   float bestSimilarity = texture(u_maxSimilarityImage, vec2(0.5f, 0.5f)).x;
 
   bool isBetter = mutatedSimilarity > bestSimilarity;
