@@ -13,7 +13,7 @@ var gl = 0;
 var totalIterations = 0;
 
 var animationFrame = 0;
-var iterationsPerFrame = 1;
+var iterationsPerFrame = 100;
 var animationFramePrevTime = 0;
 var elapsedIterations = 0;
 var ipsElem = 0;
@@ -941,29 +941,28 @@ function renderSumSimilarity() {
     // console.log("sumsim sum: " + sum);
   }
 
-  gl.readBuffer(gl.COLOR_ATTACHMENT0);
+  // gl.readBuffer(gl.COLOR_ATTACHMENT0);
 
-  const data = new Float32Array(4);
-  gl.readPixels(
-    0,            // x
-    0,            // y
-    1,                 // width
-    1,                 // height
-    gl.RGBA,           // format
-    gl.FLOAT,  // type
-    data);             // typed array to hold result
-
-
-  console.log("sumsim sum: " + data[0]);
-  if (prevbest > data[0]) {
-    console.log("HO!");
-    while (true) { }
-  }
-  prevbest = data[0];
+  // const data = new Float32Array(4);
+  // gl.readPixels(
+  //   0,            // x
+  //   0,            // y
+  //   1,                 // width
+  //   1,                 // height
+  //   gl.RGBA,           // format
+  //   gl.FLOAT,  // type
+  //   data);             // typed array to hold result
 
 
+  // console.log("sumsim sum: " + data[0]);
+  // if (prevbest > data[0]) {
+  //   console.error("Previous similarity was higher than the new one");
+  // }
+  // prevbest = data[0];
 
-  
+
+
+
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
@@ -1048,6 +1047,30 @@ function renderCopyBest() {
 
   copyBestCurrent = 1 - copyBestCurrent;
 
+
+
+  // gl.readBuffer(gl.COLOR_ATTACHMENT0);
+
+  // const data = new Float32Array(4);
+  // gl.readPixels(
+  //   0,            // x
+  //   0,            // y
+  //   1,                 // width
+  //   1,                 // height
+  //   gl.RGBA,           // format
+  //   gl.FLOAT,  // type
+  //   data);             // typed array to hold result
+
+
+  // console.log("best val: " + data[0]);
+  // if (prevbest > data[0]) {
+  //   console.error("Previous similarity was higher than the new one");
+  // }
+  // prevbest = data[0];
+
+
+
+
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
@@ -1126,7 +1149,7 @@ function renderLoop(now) {
     renderCopyMut();
     renderCopyBest();
 
-    //gl.flush();
+    gl.flush();
   }
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
