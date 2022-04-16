@@ -170,59 +170,25 @@ function setupTextures() {
   gl.bindTexture(gl.TEXTURE_2D, null);
 }
 
+function setupFrameBuffer(texture) {
+  var fbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+  return fbo;
+}
+
 function setupFrameBuffers() {
-  // Create a framebuffer
-  triangleFbo = gl.createFramebuffer();
-  gl.bindFramebuffer(gl.FRAMEBUFFER, triangleFbo);
+  triangleFbo = setupFrameBuffer(triangleTexture);
 
-  // Attach a texture to it.
-  var attachmentPoint = gl.COLOR_ATTACHMENT0;
-  var mipLevel = 0;               // the largest mip
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, triangleTexture, mipLevel);
-
-  //
-
-  // Create a framebuffer
-  similarityFbo = gl.createFramebuffer();
-  gl.bindFramebuffer(gl.FRAMEBUFFER, similarityFbo);
-
-  // Attach a texture to it.
-  var attachmentPoint = gl.COLOR_ATTACHMENT0;
-  var mipLevel = 0;               // the largest mip
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, similarityTexture, mipLevel);
-
-  //
+  similarityFbo = setupFrameBuffer(similarityTexture);
 
   for (var i = 0; i < sumSimilarityMaxLvl; i++) {
-    // Create a framebuffer
-    sumSimilarityFbo[i] = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, sumSimilarityFbo[i]);
-
-    // Attach a texture to it.
-    var attachmentPoint = gl.COLOR_ATTACHMENT0;
-    var mipLevel = 0;               // the largest mip
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, sumSimilarityTexture[i], mipLevel);
+    sumSimilarityFbo[i] = setupFrameBuffer(sumSimilarityTexture[i]);
   }
 
-  //
-
-  // Create a framebuffer
-  copyBestFbo[0] = gl.createFramebuffer();
-  gl.bindFramebuffer(gl.FRAMEBUFFER, copyBestFbo[0]);
-
-  // Attach a texture to it.
-  var attachmentPoint = gl.COLOR_ATTACHMENT0;
-  var mipLevel = 0;               // the largest mip
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, bestSimilarityTexture[0], mipLevel);
-
-  // Create a framebuffer
-  copyBestFbo[1] = gl.createFramebuffer();
-  gl.bindFramebuffer(gl.FRAMEBUFFER, copyBestFbo[1]);
-
-  // Attach a texture to it.
-  var attachmentPoint = gl.COLOR_ATTACHMENT0;
-  var mipLevel = 0;               // the largest mip
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, bestSimilarityTexture[1], mipLevel);
+  copyBestFbo[0] = setupFrameBuffer(bestSimilarityTexture[0]);
+  copyBestFbo[1] = setupFrameBuffer(bestSimilarityTexture[1]);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
