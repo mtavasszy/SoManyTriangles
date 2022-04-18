@@ -84,7 +84,6 @@ var sumSimilarityTexture = [];
 var bestSimilarityTexture = [];
 
 // buffers
-var imageRectBuffer = 0;
 var texRectBuffer = new Float32Array([0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0]);
 
 
@@ -120,8 +119,6 @@ function updateImageInfo() {
   canvas = document.querySelector("#canvas_best");
   canvas.width = IMAGE_W;
   canvas.height = IMAGE_H;
-
-  imageRectBuffer = new Float32Array([0, 0, IMAGE_W, 0, 0, IMAGE_H, 0, IMAGE_H, IMAGE_W, 0, IMAGE_W, IMAGE_H]);
 
   function log4(x) {
     return Math.log10(x) / Math.log10(4);
@@ -242,6 +239,10 @@ function setVertexBuffer(data, usage, attributeLocation, size, type) {
   return buffer
 }
 
+function getRectData(w, h) {
+  return new Float32Array([0, 0, w, 0, 0, h, 0, h, w, 0, w, h])
+}
+
 function setupTriProgram() {
   triProgram = createProgram(gl, [renderTriVertSource, renderTriFragSource], ['tf_position', 'tf_color', 'tf_mutated_position', 'tf_mutated_color']);
 
@@ -306,7 +307,7 @@ function setupSimilarityProgram() {
   // and make it the one we're currently working with
   gl.bindVertexArray(similarityVao);
 
-  var similarityPositionBuffer = setVertexBuffer(imageRectBuffer, gl.STATIC_DRAW, similarityPositionAttributeLocation, 2, gl.FLOAT)
+  var similarityPositionBuffer = setVertexBuffer(getRectData(IMAGE_W, IMAGE_H), gl.STATIC_DRAW, similarityPositionAttributeLocation, 2, gl.FLOAT)
   var similarityTexCoordBuffer = setVertexBuffer(texRectBuffer, gl.STATIC_DRAW, similarityTexCoordAttributeLocation, 2, gl.FLOAT);
 }
 
@@ -327,62 +328,14 @@ function setupSumSimilarityProgram() {
   var resY = IMAGE_H;
 
   for (var i = 0; i < sumSimilarityMaxLvl; i++) {
-    // Create a vertex array object (attribute state)
-    sumSimilarityVao[i] = gl.createVertexArray();
-
-    // and make it the one we're currently working with
-    gl.bindVertexArray(sumSimilarityVao[i]);
-
-    // Create a buffer and put a single pixel space rectangle in
-    // it (2 triangles)
-    var sumSimilarityPositionBuffer = gl.createBuffer();
-
-    // Turn on the attribute
-    gl.enableVertexAttribArray(sumSimilarityPositionAttributeLocation);
-
-    // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
-    gl.bindBuffer(gl.ARRAY_BUFFER, sumSimilarityPositionBuffer);
-
-    // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
-    var size = 2;          // 2 components per iteration
-    var type = gl.FLOAT;   // the data is 32bit floats
-    var normalize = false; // don't normalize the data
-    var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-    var offset = 0;        // start at the beginning of the buffer
-    gl.vertexAttribPointer(sumSimilarityPositionAttributeLocation, size, type, normalize, stride, offset);
-
-    // provide texture coordinates for the rectangle.
-    var sumSimilarityTexCoordBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, sumSimilarityTexCoordBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-      0.0, 0.0,
-      1.0, 0.0,
-      0.0, 1.0,
-      0.0, 1.0,
-      1.0, 0.0,
-      1.0, 1.0,
-    ]), gl.STATIC_DRAW);
-
-    // Turn on the attribute
-    gl.enableVertexAttribArray(sumSimilarityTexCoordAttributeLocation);
-
-    // Tell the attribute how to get data out of texCoordBuffer (ARRAY_BUFFER)
-    var size = 2;          // 2 components per iteration
-    var type = gl.FLOAT;   // the data is 32bit floats
-    var normalize = false; // don't normalize the data
-    var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-    var offset = 0;        // start at the beginning of the buffer
-    gl.vertexAttribPointer(sumSimilarityTexCoordAttributeLocation, size, type, normalize, stride, offset);
-
-    // Bind the position buffer so gl.bufferData that will be called
-    // in setRectangle puts data in the position buffer
-    gl.bindBuffer(gl.ARRAY_BUFFER, sumSimilarityPositionBuffer);
-
     resX = Math.ceil(resX / 4);
     resY = Math.ceil(resY / 4);
+    
+    sumSimilarityVao[i] = gl.createVertexArray();
+    gl.bindVertexArray(sumSimilarityVao[i]);
 
-    // Set a rectangle the same size as the image.
-    setRectangle(gl, 0, 0, resX, resY);
+    var sumSimilarityPositionBuffer = setVertexBuffer(getRectData(resX, resY), gl.STATIC_DRAW, sumSimilarityPositionAttributeLocation, 2, gl.FLOAT)
+    var sumSimilarityTexCoordBuffer = setVertexBuffer(texRectBuffer, gl.STATIC_DRAW, sumSimilarityTexCoordAttributeLocation, 2, gl.FLOAT);
   }
 }
 
@@ -417,73 +370,13 @@ function setupCopyMutProgram() {
   }
 
   // VAO COPY MUT
-  // Create set of attributes
   copyMutVao = gl.createVertexArray();
   gl.bindVertexArray(copyMutVao);
 
-  // Create a buffer for the positons.
-  copyMutPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, copyMutPositionBuffer);
-
-  // Set Geometry.
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triPositions), gl.DYNAMIC_DRAW);
-
-  // tell the position attribute how to pull data out of the current ARRAY_BUFFER
-  gl.enableVertexAttribArray(copyMutPositionAttributeLocation);
-  var size = 2;
-  var type = gl.FLOAT;
-  var normalize = false;
-  var stride = 0;
-  var offset = 0;
-  gl.vertexAttribPointer(copyMutPositionAttributeLocation, size, type, normalize, stride, offset);
-
-  // Create a buffer for the colors.
-  copyMutColorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, copyMutColorBuffer);
-  // Set the colors.
-
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triColors), gl.DYNAMIC_DRAW);
-
-  // tell the color attribute how to pull data out of the current ARRAY_BUFFER
-  gl.enableVertexAttribArray(copyMutColorAttributeLocation);
-  var size = 4;
-  var type = gl.FLOAT;
-  var normalize = false;
-  var stride = 0;
-  var offset = 0;
-  gl.vertexAttribPointer(copyMutColorAttributeLocation, size, type, normalize, stride, offset);
-
-  // Create a buffer for the positons.
-  copyMutMutatedPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, copyMutMutatedPositionBuffer);
-
-  // Set Geometry.
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triPositions), gl.DYNAMIC_DRAW);
-
-  // tell the position attribute how to pull data out of the current ARRAY_BUFFER
-  gl.enableVertexAttribArray(copyMutMutatedPositionAttributeLocation);
-  var size = 2;
-  var type = gl.FLOAT;
-  var normalize = false;
-  var stride = 0;
-  var offset = 0;
-  gl.vertexAttribPointer(copyMutMutatedPositionAttributeLocation, size, type, normalize, stride, offset);
-
-  // Create a buffer for the colors.
-  copyMutMutatedColorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, copyMutMutatedColorBuffer);
-  // Set the colors.
-
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triColors), gl.DYNAMIC_DRAW);
-
-  // tell the color attribute how to pull data out of the current ARRAY_BUFFER
-  gl.enableVertexAttribArray(copyMutMutatedColorAttributeLocation);
-  var size = 4;
-  var type = gl.FLOAT;
-  var normalize = false;
-  var stride = 0;
-  var offset = 0;
-  gl.vertexAttribPointer(copyMutMutatedColorAttributeLocation, size, type, normalize, stride, offset);
+  copyMutPositionBuffer = setVertexBuffer(new Float32Array(triPositions), gl.DYNAMIC_DRAW, copyMutPositionAttributeLocation, 2, gl.FLOAT);
+  copyMutColorBuffer = setVertexBuffer(new Float32Array(triColors), gl.DYNAMIC_DRAW, copyMutColorAttributeLocation, 4, gl.FLOAT);
+  copyMutMutatedPositionBuffer = setVertexBuffer(new Float32Array(triPositions), gl.DYNAMIC_DRAW, copyMutMutatedPositionAttributeLocation, 2, gl.FLOAT);
+  copyMutMutatedColorBuffer = setVertexBuffer(new Float32Array(triColors), gl.DYNAMIC_DRAW, copyMutMutatedColorAttributeLocation, 4, gl.FLOAT);
 }
 
 function setupCopyBestProgram() {
@@ -501,57 +394,10 @@ function setupCopyBestProgram() {
 
   // Create a vertex array object (attribute state)
   copyBestVao = gl.createVertexArray();
-
-  // and make it the one we're currently working with
   gl.bindVertexArray(copyBestVao);
 
-  // Create a buffer and put a single pixel space rectangle in
-  // it (2 triangles)
-  var copyBestPositionBuffer = gl.createBuffer();
-
-  // Turn on the attribute
-  gl.enableVertexAttribArray(copyBestPositionAttributeLocation);
-
-  // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
-  gl.bindBuffer(gl.ARRAY_BUFFER, copyBestPositionBuffer);
-
-  // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
-  var size = 2;          // 2 components per iteration
-  var type = gl.FLOAT;   // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-  var offset = 0;        // start at the beginning of the buffer
-  gl.vertexAttribPointer(copyBestPositionAttributeLocation, size, type, normalize, stride, offset);
-
-  // provide texture coordinates for the rectangle.
-  var copyBestTexCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, copyBestTexCoordBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    0.0, 0.0,
-    1.0, 0.0,
-    0.0, 1.0,
-    0.0, 1.0,
-    1.0, 0.0,
-    1.0, 1.0,
-  ]), gl.STATIC_DRAW);
-
-  // Turn on the attribute
-  gl.enableVertexAttribArray(copyBestTexCoordAttributeLocation);
-
-  // Tell the attribute how to get data out of texCoordBuffer (ARRAY_BUFFER)
-  var size = 2;          // 2 components per iteration
-  var type = gl.FLOAT;   // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-  var offset = 0;        // start at the beginning of the buffer
-  gl.vertexAttribPointer(copyBestTexCoordAttributeLocation, size, type, normalize, stride, offset);
-
-  // Bind the position buffer so gl.bufferData that will be called
-  // in setRectangle puts data in the position buffer
-  gl.bindBuffer(gl.ARRAY_BUFFER, copyBestPositionBuffer);
-
-  // Set a rectangle the same size as the image.
-  setRectangle(gl, 0, 0, 1, 1);
+  var copyBestPositionBuffer = setVertexBuffer(getRectData(1,1), gl.STATIC_DRAW, copyBestPositionAttributeLocation, 2, gl.FLOAT);
+  var copyBestTexCoordBuffer = setVertexBuffer(texRectBuffer, gl.STATIC_DRAW, copyBestTexCoordAttributeLocation, 2, gl.FLOAT);
 }
 
 function setupRenderToCanvasProgram() {
@@ -568,58 +414,10 @@ function setupRenderToCanvasProgram() {
 
   // Create a vertex array object (attribute state)
   rtcVao = gl.createVertexArray();
-
-  // and make it the one we're currently working with
   gl.bindVertexArray(rtcVao);
 
-  // Create a buffer and put a single pixel space rectangle in
-  // it (2 triangles)
-  var rtcPositionBuffer = gl.createBuffer();
-
-  // Turn on the attribute
-  gl.enableVertexAttribArray(rtcPositionAttributeLocation);
-
-  // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
-  gl.bindBuffer(gl.ARRAY_BUFFER, rtcPositionBuffer);
-
-  // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
-  var size = 2;          // 2 components per iteration
-  var type = gl.FLOAT;   // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-  var offset = 0;        // start at the beginning of the buffer
-  gl.vertexAttribPointer(rtcPositionAttributeLocation, size, type, normalize, stride, offset);
-
-  // provide texture coordinates for the rectangle.
-  var rtcTexCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, rtcTexCoordBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    0.0, 0.0,
-    1.0, 0.0,
-    0.0, 1.0,
-    0.0, 1.0,
-    1.0, 0.0,
-    1.0, 1.0,
-  ]), gl.STATIC_DRAW);
-
-  // Turn on the attribute
-  gl.enableVertexAttribArray(rtcTexCoordAttributeLocation);
-
-  // Tell the attribute how to get data out of texCoordBuffer (ARRAY_BUFFER)
-  var size = 2;          // 2 components per iteration
-  var type = gl.FLOAT;   // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-  var offset = 0;        // start at the beginning of the buffer
-  gl.vertexAttribPointer(
-    rtcTexCoordAttributeLocation, size, type, normalize, stride, offset);
-
-  // Bind the position buffer so gl.bufferData that will be called
-  // in setRectangle puts data in the position buffer
-  gl.bindBuffer(gl.ARRAY_BUFFER, rtcPositionBuffer);
-
-  // Set a rectangle the same size as the image.
-  setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
+  var rtcPositionBuffer = setVertexBuffer(getRectData(IMAGE_W, IMAGE_H), gl.STATIC_DRAW, rtcPositionAttributeLocation, 2, gl.FLOAT);
+  var rtcTexCoordBuffer = setVertexBuffer(texRectBuffer, gl.STATIC_DRAW, rtcTexCoordAttributeLocation, 2, gl.FLOAT);
 }
 
 function setupTransformFeedback() {
