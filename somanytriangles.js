@@ -83,6 +83,11 @@ var similarityTexture = 0;
 var sumSimilarityTexture = [];
 var bestSimilarityTexture = [];
 
+// buffers
+var imageRectBuffer = 0;
+var texRectBuffer = new Float32Array([0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0]);
+
+
 var prevbest = 0;
 
 // // 
@@ -116,11 +121,13 @@ function updateImageInfo() {
   canvas.width = IMAGE_W;
   canvas.height = IMAGE_H;
 
+  imageRectBuffer = new Float32Array([0, 0, IMAGE_W, 0, 0, IMAGE_H, 0, IMAGE_H, IMAGE_W, 0, IMAGE_W, IMAGE_H]);
+
   function log4(x) {
     return Math.log10(x) / Math.log10(4);
   }
 
-  sumSimilarityMaxLvl = Math.ceil(log4(Math.max(IMAGE_W, IMAGE_H))); // CEIL NOT FLOOR
+  sumSimilarityMaxLvl = Math.ceil(log4(Math.max(IMAGE_W, IMAGE_H)));
 
   ipsElem = document.querySelector("#iterations_per_sec");
   totalItElem = document.querySelector("#total_iterations");
@@ -223,6 +230,18 @@ function createProgram(gl, shaderSources, transformFeedbackVaryings) {
   return program;
 }
 
+function setVertexBuffer(data, usage, attributeLocation, size, type) {
+  var buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
+  gl.bufferData(gl.ARRAY_BUFFER, data, usage);
+
+  gl.enableVertexAttribArray(attributeLocation);
+  gl.vertexAttribPointer(attributeLocation, size, type, false, 0, 0);
+
+  return buffer
+}
+
 function setupTriProgram() {
   triProgram = createProgram(gl, [renderTriVertSource, renderTriFragSource], ['tf_position', 'tf_color', 'tf_mutated_position', 'tf_mutated_color']);
 
@@ -263,37 +282,9 @@ function setupTriProgram() {
   triVao = gl.createVertexArray();
   gl.bindVertexArray(triVao);
 
-  // Create a buffer for the positons.
-  triPositionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, triPositionBuffer);
-
-  // Set Geometry.
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triPositions), gl.DYNAMIC_DRAW);
-
-  // tell the position attribute how to pull data out of the current ARRAY_BUFFER
-  gl.enableVertexAttribArray(triPositionAttributeLocation);
-  var size = 2;
-  var type = gl.FLOAT;
-  var normalize = false;
-  var stride = 0;
-  var offset = 0;
-  gl.vertexAttribPointer(triPositionAttributeLocation, size, type, normalize, stride, offset);
-
-  // Create a buffer for the colors.
-  triColorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, triColorBuffer);
-  // Set the colors.
-
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triColors), gl.DYNAMIC_DRAW);
-
-  // tell the color attribute how to pull data out of the current ARRAY_BUFFER
-  gl.enableVertexAttribArray(triColorAttributeLocation);
-  var size = 4;
-  var type = gl.FLOAT;
-  var normalize = false;
-  var stride = 0;
-  var offset = 0;
-  gl.vertexAttribPointer(triColorAttributeLocation, size, type, normalize, stride, offset);
+  triPositionBuffer = setVertexBuffer(new Float32Array(triPositions), gl.DYNAMIC_DRAW, triPositionAttributeLocation, 2, gl.FLOAT);
+  triColorBuffer = setVertexBuffer(new Float32Array(triColors), gl.DYNAMIC_DRAW, triColorAttributeLocation, 4, gl.FLOAT);
+  
 }
 
 function setupSimilarityProgram() {
@@ -315,55 +306,8 @@ function setupSimilarityProgram() {
   // and make it the one we're currently working with
   gl.bindVertexArray(similarityVao);
 
-  // Create a buffer and put a single pixel space rectangle in
-  // it (2 triangles)
-  var similarityPositionBuffer = gl.createBuffer();
-
-  // Turn on the attribute
-  gl.enableVertexAttribArray(similarityPositionAttributeLocation);
-
-  // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
-  gl.bindBuffer(gl.ARRAY_BUFFER, similarityPositionBuffer);
-
-  // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
-  var size = 2;          // 2 components per iteration
-  var type = gl.FLOAT;   // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-  var offset = 0;        // start at the beginning of the buffer
-  gl.vertexAttribPointer(
-    similarityPositionAttributeLocation, size, type, normalize, stride, offset);
-
-  // provide texture coordinates for the rectangle.
-  var similarityTexCoordBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, similarityTexCoordBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    0.0, 0.0,
-    1.0, 0.0,
-    0.0, 1.0,
-    0.0, 1.0,
-    1.0, 0.0,
-    1.0, 1.0,
-  ]), gl.STATIC_DRAW);
-
-  // Turn on the attribute
-  gl.enableVertexAttribArray(similarityTexCoordAttributeLocation);
-
-  // Tell the attribute how to get data out of texCoordBuffer (ARRAY_BUFFER)
-  var size = 2;          // 2 components per iteration
-  var type = gl.FLOAT;   // the data is 32bit floats
-  var normalize = false; // don't normalize the data
-  var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
-  var offset = 0;        // start at the beginning of the buffer
-  gl.vertexAttribPointer(
-    similarityTexCoordAttributeLocation, size, type, normalize, stride, offset);
-
-  // Bind the position buffer so gl.bufferData that will be called
-  // in setRectangle puts data in the position buffer
-  gl.bindBuffer(gl.ARRAY_BUFFER, similarityPositionBuffer);
-
-  // Set a rectangle the same size as the image.
-  setRectangle(gl, 0, 0, IMAGE_W, IMAGE_H);
+  var similarityPositionBuffer = setVertexBuffer(imageRectBuffer, gl.STATIC_DRAW, similarityPositionAttributeLocation, 2, gl.FLOAT)
+  var similarityTexCoordBuffer = setVertexBuffer(texRectBuffer, gl.STATIC_DRAW, similarityTexCoordAttributeLocation, 2, gl.FLOAT);
 }
 
 function setupSumSimilarityProgram() {
